@@ -61,6 +61,7 @@ It documents the ideas, breakthroughs, and phases of development from inception.
   - Might look at other file types for same compression if successful.
 - STL to STEP conversion possibility. Will look into later.
 - Realized that there could be missing data on some of the blueprints, need to check and update.
+- Estimated dev time from a 4-5 dev team 9-12 months down to 6-8 weeks solo for core MVP due to keystone blueprints, impressive.
 
 ---
 
