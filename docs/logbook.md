@@ -60,6 +60,7 @@ It documents the ideas, breakthroughs, and phases of development from inception.
   - Viewer concept scoped: show logic is real, not black box magic.
   - Might look at other file types for same compression if successful.
 - STL to STEP conversion possibility. Will look into later.
+- Realized that there could be missing data on some of the blueprints, need to check and update.
 
 ---
 
