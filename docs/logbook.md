@@ -30,7 +30,7 @@ It documents the ideas, breakthroughs, and phases of development from inception.
 ---
 
 ### 📅 2024-05-04 – Mini AI path
-- AI logic, purpose built AI's with logic layer. AI -> Logic/Intent -> AI.
+- AI logic, purpose built AI's with logic layer. AI → Logic/Intent → AI.
 
 ---
 
@@ -62,6 +62,24 @@ It documents the ideas, breakthroughs, and phases of development from inception.
 - STL to STEP conversion possibility. Will look into later.
 - Realized that there could be missing data on some of the blueprints, need to check and update.
 - Estimated dev time from a 4-5 dev team 9-12 months down to 6-8 weeks solo for core MVP due to keystone blueprints, impressive.
+
+---
+
+### 📅 2024-05-07 – That's a lot of text | Too many ideas
+- **Spatial logic breakthrough:***
+  - Anchor-based placement replace CAD constraints.
+  - Thread-safe, loopable part generation - order no longer matters.
+  - Simplified geometry, placement and part constructions.
+- Archive recovery operation:
+  - Recovered and cleaned **36 new blueprint fragments***.
+  - Merged and categorized for future drops.
+- Blueprint upgrades:
+  - Gauntlet → v2.0.
+    - v1.0 archived.
+  - Caladan → v1.1 *(clarity pass, same logic)*.
+     - v1.0 archived
+  - New: **examples_intent_logic**
+- Mapped out the logic layer and experience core for an editor.
 
 ---
 
