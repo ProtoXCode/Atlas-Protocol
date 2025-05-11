@@ -54,7 +54,7 @@ Atlas is released under the **Atlas Liberation License (ALL)**:
 - 🚫 Prohibited for oppression, mass surveillance, or civilian-targeted weaponization
 - 🔁 Redistribution must preserve open terms and author credit
 
-→ Full license: `LICENSE.txt` *(coming soon)*
+→ Full license: [LICENSE.txt](./LICENSE.txt)
 
 ---
 
