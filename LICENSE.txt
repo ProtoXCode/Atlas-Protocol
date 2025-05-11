@@ -11,13 +11,13 @@ and community innovation, subject to the following conditions:
 
 ---
 
-1. Attribution  
+1. Attribution:
 All copies or substantial portions of the Software must retain this license,  
 author attribution, and any notices of original origin.
 
 ---
 
-2. Commercial Use
+2. Commercial Use:
 Commercial use, integration, or deployment of the Software or its derivatives,
 whether direct or indirect, requires a commercial license agreement with the
 author or rightful maintainers.
@@ -45,13 +45,13 @@ teharnes@gmail.com
 
 ---
 
-3. Openness & Derivatives  
+3. Openness & Derivatives:
 All modifications and enhancements must remain open-source if distributed.  
 Forks, logic modules, and system extensions must retain this license or a compatible open license.
 
 ---
 
-4. Prohibited Uses  
+4. Prohibited Uses:
 The Software may **not** be used, directly or indirectly, in:
 
 - Systems of oppression or authoritarian surveillance  
@@ -63,7 +63,7 @@ but must adhere to ethical guidelines and cannot violate the above clause.
 
 ---
 
-5. No Warranty  
+5. No Warranty:
 The Software is provided “as is”, without warranty of any kind, express or implied,  
 including but not limited to the warranties of merchantability, fitness for a particular  
 purpose and noninfringement. In no event shall the authors be liable for any claim, damages  
