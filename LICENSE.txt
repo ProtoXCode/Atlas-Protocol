@@ -1,4 +1,4 @@
-Atlas Liberation License (ALL) v1.0
+Atlas Liberation License (ALL) v1.1
 ===================================
 
 Copyright (c) 2025–present Tom Erik Harnes
@@ -17,13 +17,31 @@ author attribution, and any notices of original origin.
 
 ---
 
-2. Commercial Use  
-Commercial use, integration, or distribution of the Software, its derivatives,  
-or generated outputs (including but not limited to CAD files, digital twins, ERP logic)  
-**requires registration or a commercial license agreement** with the author or rightful maintainers.
+2. Commercial Use
+Commercial use, integration, or deployment of the Software or its derivatives,
+whether direct or indirect, requires a commercial license agreement with the
+author or rightful maintainers.
 
-> **Commercial extensions and closed logic modules are only permitted under a licensed agreement.**  
-> **Otherwise, all modifications must remain open.**
+This includes, but is not limited to:
+- Use of the Software in internal product development pipelines within
+  commercial entities
+- Generation of design assets, CAD files, digital twins, manufacturing drawings,
+  BOMs, or other derivative outputs used in commercial workflows
+- Integration into ERP, MES, or PDM systems for configuration, resolution,
+  or validation purposes
+- Embedding or utilizing the Software in SaaS platforms, APIs, or internal
+  tools that provide commercial value
+- Use in the development or manufacturing of products intended for sale, trade,
+  or professional deployment
+- Any use that contributes to the creation, enhancement, or delivery of
+  commercial value constitutes commercial use under this license.
+
+Commercial usage is permitted only under a registered license agreement, which
+may include flat-rate or usage-based terms depending on the scope of integration.
+
+For licensing terms, contact:
+Tom Erik Harnes
+teharnes@gmail.com
 
 ---
 
