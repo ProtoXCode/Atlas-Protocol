@@ -83,4 +83,17 @@ It documents the ideas, breakthroughs, and phases of development from inception.
 
 ---
 
+### 📅 2024-05-11 – Project concept almost complete
+- **Project progress: (Concept is 90%-ish done)**
+  - GUI layout and function flow.
+  - Viewer interaction model.
+  - Part module logic.
+  - Export pipelines.
+- Updated docs:
+  - LICENSE: Updated to v1.1. Refined commercial use part.
+  - README: Fixed link to license.
+- First *code*:
+  - main.py with layout.
+  - Added requirements.txt.
+
 This log will be continuously updated as Atlas expands.
