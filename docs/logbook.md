@@ -96,4 +96,12 @@ It documents the ideas, breakthroughs, and phases of development from inception.
   - main.py with layout.
   - Added requirements.txt.
 
+---
+
+### 📅 2024-05-12 – GUI work
+- Added another row, dropdown selector for models.
+- Long days at work this week at the factory due to Lean/5S corse. 12h days.
+
+---
+
 This log will be continuously updated as Atlas expands.
