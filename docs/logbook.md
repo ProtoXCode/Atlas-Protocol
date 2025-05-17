@@ -104,4 +104,12 @@ It documents the ideas, breakthroughs, and phases of development from inception.
 
 ---
 
+### 📅 2024-05-17 – Folder restructure
+- Moved blueprints into docs folder.
+  - Legacy_blueprints into blueprints.
+- New folder: idea_oasis - Where misc ideas is added:
+  - Added idea for memory management by reversing the file.
+
+---
+
 This log will be continuously updated as Atlas expands.
