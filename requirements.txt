@@ -1,1 +1,3 @@
-customtkinter
+qt-material
+PySide6
+vtk
