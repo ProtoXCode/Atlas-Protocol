@@ -5,6 +5,27 @@ It documents the ideas, breakthroughs, and phases of development from inception.
 
 ---
 
+### 📅 2025-06-10 – STEP File Generation 🎉
+- 🚀 **Milestone unlocked:** First successful build and execution of my custom OpenCascade Python wrapper — *no Conda, no bloat*.
+- ✅ **Fully working:**  
+  - `make_box()` – creates a basic 3D box shape  
+  - `export_step()` – exports it cleanly as a `.step` file
+
+- 🔧 **Built using:**  
+  - Pybind11  
+  - CMake + Ninja  
+  - vcpkg-managed OpenCascade  
+  - Manually curated DLL runtime (Windows)
+
+- 🧠 **Why this matters:**  
+  - Minimal, fast, and lean — designed for automation and intent-driven CAD, not GUI-heavy legacy tooling.
+  - The engine behind future Atlas Protocol CAD generation is now real — and it works.
+
+**🗂 Status:** Wrapper is real, box is built, STEP file exported.  
+Next: More shapes, more power, and full Atlas integration.
+
+---
+
 ### 📅 2024-06-05 – GUI Refactor
 - Switched to Pyside6 since VTK didn't support Tkinter.
   - Loaded and rendered a STL file.
