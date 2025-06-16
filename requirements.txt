@@ -1,3 +1,4 @@
 qt-material
 PySide6
+psutil
 vtk
