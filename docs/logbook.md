@@ -5,6 +5,24 @@ It documents the ideas, breakthroughs, and phases of development from inception.
 
 ---
 
+### 📅 2025-06-17 – Wrapper Work
+- Added several new feautures to the wrapper:
+  - Triangle wire shape
+  - Square wire shape
+  - Cylinder
+  - Cut
+  - Fuse
+  - Translate
+
+It *compiles*, and I'm close to the minimum specs for an MVP.
+
+---
+
+### 📅 2025-06-16 – Memory Usage Info
+- Added memory usage information in the viewer.
+
+---
+
 ### 📅 2025-06-10 – STEP File Generation 🎉
 - 🚀 **Milestone unlocked:** First successful build and execution of my custom OpenCascade Python wrapper — *no Conda, no bloat*.
 - ✅ **Fully working:**  
@@ -26,14 +44,14 @@ Next: More shapes, more power, and full Atlas integration.
 
 ---
 
-### 📅 2024-06-05 – GUI Refactor
+### 📅 2025-06-05 – GUI Refactor
 - Switched to Pyside6 since VTK didn't support Tkinter.
   - Loaded and rendered a STL file.
 - Reversed this log. New entry on top.
 
 ---
 
-### 📅 2024-05-17 – Folder restructure
+### 📅 2025-05-17 – Folder restructure
 - Moved blueprints into docs folder.
   - Legacy_blueprints into blueprints.
 - New folder: idea_oasis - Where misc ideas is added:
@@ -41,13 +59,13 @@ Next: More shapes, more power, and full Atlas integration.
 
 ---
 
-### 📅 2024-05-12 – GUI work
+### 📅 2025-05-12 – GUI work
 - Added another row, dropdown selector for models.
 - Long days at work this week at the factory due to Lean/5S corse. 12h days.
 
 ---
 
-### 📅 2024-05-11 – Project concept almost complete
+### 📅 2025-05-11 – Project concept almost complete
 - **Project progress: (Concept is 90%-ish done)**
   - GUI layout and function flow.
   - Viewer interaction model.
@@ -62,7 +80,7 @@ Next: More shapes, more power, and full Atlas integration.
 
 ---
 
-### 📅 2024-05-07 – That's a lot of text | Too many ideas
+### 📅 2025-05-07 – That's a lot of text | Too many ideas
 - **Spatial logic breakthrough:***
   - Anchor-based placement replace CAD constraints.
   - Thread-safe, loopable part generation - order no longer matters.
@@ -80,7 +98,7 @@ Next: More shapes, more power, and full Atlas integration.
 
 ---
 
-### 📅 2024-05-06 – Too many new ideas / BHC side project
+### 📅 2025-05-06 – Too many new ideas / BHC side project
 - Oppurtunity to look at a possibility to compress STEP files.
   - Created full folder structure for BHC repo.
   - Built `compress_to_atlas()` and wired it into CLI and API.
@@ -96,7 +114,7 @@ Next: More shapes, more power, and full Atlas integration.
 
 ---
 
-### 📅 2024-05-05 – Project planning
+### 📅 2025-05-05 – Project planning
 - Concepted viewer GUI, must choose demo item:
   - Transformer (Time consuming, but very straight forward)
   - Door (Simple and easy, boring though)
@@ -104,26 +122,26 @@ Next: More shapes, more power, and full Atlas integration.
 
 ---
 
-### 📅 2024-05-03–04 – Keystone ideas
+### 📅 2025-05-03–04 – Keystone ideas
 - Defined how constraints flow between subsystems.
 - The idea of **co-design across teams and geos** becomes native.
 - Potential massive resource reduction in Atlas, potato compatible?
 
 ---
 
-### 📅 2024-05-04 – Mini AI path
+### 📅 2025-05-04 – Mini AI path
 - AI logic, purpose built AI's with logic layer. AI → Logic/Intent → AI.
 
 ---
 
-### 📅 2024-05-02 – Caladan Named and Framed
+### 📅 2025-05-02 – Caladan Named and Framed
 - Caladan defined as the planetary-scale runtime state engine.
 - Introduced ripple-based constraint propagation as a living environment concept.
 - Logic-first twins enter scope: machines, assemblies, data flows.
 
 ---
 
-### 📅 2024-05-01 – Core System Mapped
+### 📅 2025-05-01 – Core System Mapped
 - Sketched the modular architecture of Atlas:
   - Titan – Master logic resolver
   - Keystone – Constraint manager
@@ -133,7 +151,7 @@ Next: More shapes, more power, and full Atlas integration.
 
 ---
 
-### 📅 2024-04-30 – The Atlas Idea is Born
+### 📅 2025-04-30 – The Atlas Idea is Born
 - Started working with the idea to automate parts using Python.
 - Since all data is known of entire item, why not automate all of it?
 - Initial concept: What if we started from **design intent**, not geometry?
