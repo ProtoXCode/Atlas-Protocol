@@ -43,8 +43,8 @@ class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
 
-        self.setWindowTitle("Atlas Protocol PySide6 MVP")
-        self.resize(1500, 750)
+        self.setWindowTitle(f'{PROGRAM_NAME} v{PROGRAM_VERSION}')
+        self.resize(WINDOW_WIDTH, WINDOW_HEIGHT)
         central = QWidget()
         self.setCentralWidget(central)
 
@@ -54,14 +54,18 @@ class MainWindow(QMainWindow):
         # Left Panel
         self.left_panel = LeftPanel()
         self.left_panel.setFixedWidth(PANEL_CONTROL_WIDTH)
-        self.left_panel.setMinimumWidth(PANEL_CONTROL_WIDTH)
         grid.addWidget(self.left_panel, 0, 0, 2, 1)
 
         # 3D Viewer Panel (Center)
-        self.vtk_panel = VTKQtViewer("models/atlas_test_cube/cube.stl")
+        self.vtk_panel = VTKQtViewer()
         self.vtk_panel.setMinimumHeight(400)
         self.vtk_panel.setMinimumWidth(600)
         grid.addWidget(self.vtk_panel, 0, 1, 1, 1)
+
+        # Load mesh from model and render
+        from models.occ_test.main import model
+        tris = model()
+        self.vtk_panel.load_triangles(tris)
 
         # Right Panel
         self.right_panel = RightPanel()

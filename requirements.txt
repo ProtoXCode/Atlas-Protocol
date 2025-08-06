@@ -1,4 +1,5 @@
 qt-material
 PySide6
 psutil
+numpy
 vtk

@@ -5,9 +5,17 @@ It documents the ideas, breakthroughs, and phases of development from inception.
 
 ---
 
+### 📅 2025-08-06 – Rendering Mesh
+🚀 **Milestone unlocked!**
+- Added a simple box shape model.
+- Removed the stl and stp files, no longer needed.
+- Replaced the stl file viewer with a render_mesh function, now displays the model directly to the VTK viewer.
+
+---
+
 ### 📅 2025-08-05 – winx_x64 runtime
 - Copied over the remainder of the OCC dll files, it's a bit redundant, some of them might not be needed, but I haven't eliminated those who are not needed yet. They don't directly take up too mich space.
-- I might move the dll's over as a seperate download and provide a script to generate them, but for now the compiled files are ready to use.
+- I might move the dll's over as a separate download and provide a script to generate them, but for now the compiled files are ready to use.
 - Included the first public version of my wrapper, the included pyi file should make use of it understandable.
 - Added functionality into the wrapper to display mesh, not tested yet, but should make the models renderable in VTK.
 - Linux runtime files and wrapper exists, not uploaded yet since things change constantly, but could be upped if needed.
@@ -16,7 +24,7 @@ It documents the ideas, breakthroughs, and phases of development from inception.
 ---
 
 ### 📅 2025-06-17 – Wrapper Work
-- Added several new feautures to the wrapper:
+- Added several new features to the wrapper:
   - Triangle wire shape
   - Square wire shape
   - Cylinder
@@ -109,7 +117,7 @@ Next: More shapes, more power, and full Atlas integration.
 ---
 
 ### 📅 2025-05-06 – Too many new ideas / BHC side project
-- Oppurtunity to look at a possibility to compress STEP files.
+- Opportunity to look at a possibility to compress STEP files.
   - Created full folder structure for BHC repo.
   - Built `compress_to_atlas()` and wired it into CLI and API.
     - Must finish compressor. Let's hope it works, it's *unusual*.

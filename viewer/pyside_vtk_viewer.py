@@ -1,15 +1,17 @@
-from PySide6.QtWidgets import QApplication, QMainWindow, QLabel, QVBoxLayout, \
+import os
+
+import numpy as np
+from PySide6.QtWidgets import QMainWindow, QLabel, QVBoxLayout, \
     QWidget
 from PySide6.QtCore import QTimer, Qt
 from vtkmodules.qt.QVTKRenderWindowInteractor import QVTKRenderWindowInteractor
+from vtkmodules.util.numpy_support import numpy_to_vtk
 import vtk
 import psutil
-import os
-import sys
 
 
 class VTKQtViewer(QMainWindow):
-    def __init__(self, stl_path=None, parent=None) -> None:
+    def __init__(self, parent=None) -> None:
         super().__init__(parent)
         self.setWindowTitle('PySide6 VTK Viewer')
         self.setGeometry(100, 100, 800, 600)
@@ -28,9 +30,6 @@ class VTKQtViewer(QMainWindow):
 
         self.renderer = vtk.vtkRenderer()
         self.vtkWidget.GetRenderWindow().AddRenderer(self.renderer)
-
-        if stl_path:
-            self.load_stl(stl_path)
 
         self.vtkWidget.Initialize()
         self.vtkWidget.Start()
@@ -66,7 +65,7 @@ class VTKQtViewer(QMainWindow):
         self.update_memory_display()
 
     def _on_viewer_resize(self, event) -> None:
-        """ Always keeps the label top-rigth (with 16px padding) """
+        """ Always keeps the label top-right (with 16px padding) """
         self.memory_label.move(
             self.vtkWidget.width() - self.memory_label.width() - 18, 16)
         # Call the original VTK widget resizeEvent (so VTK still gets notified!)
@@ -86,24 +85,62 @@ class VTKQtViewer(QMainWindow):
             self.memory_label.setText(f'Memory: Error ({e})')
             self.memory_timer.stop()  # Stop the timer if an error occurs
 
-    def load_stl(self, stl_path) -> None:
-        """ Just a temporary file to display while the wrapper is built """
-        self.renderer.RemoveAllViewProps()
-        reader = vtk.vtkSTLReader()
-        reader.SetFileName(stl_path)
-        reader.Update()
+    def load_triangles(self, tris: list[list[float]]) -> None:
+        """ Loads triangles and displays them in VTK """
+        polydata = self.render_mesh(tris)
+
         mapper = vtk.vtkPolyDataMapper()
-        mapper.SetInputConnection(reader.GetOutputPort())  # type: ignore
+        mapper.SetInputData(polydata)
+
         actor = vtk.vtkActor()
         actor.SetMapper(mapper)
         actor.GetProperty().SetColor(0.2, 0.7, 0.8)
+
+        self.renderer.RemoveActor(actor)
         self.renderer.AddActor(actor)
         self.renderer.ResetCamera()
         self.vtkWidget.GetRenderWindow().Render()
 
+    @staticmethod
+    def render_mesh(tris: list[list[float]]) -> vtk.vtkPolyData:
+        """ Render list of 9-float triangles to vtkPolyData """
 
-if __name__ == '__main__':
-    app = QApplication(sys.argv)
-    viewer = VTKQtViewer()
-    viewer.show()
-    sys.exit(app.exec())
+        tris_np = np.array(tris, dtype=np.float32).reshape(-1, 3, 3)
+
+        # Flatten vertices and deduplicate
+        points = []
+        faces = []
+
+        point_id_map = {}
+        next_id = 0
+
+        for tri in tris_np:
+            face_ids = []
+            for vert in tri:
+                key = tuple(vert)
+                if key not in point_id_map:
+                    point_id_map[key] = next_id
+                    points.append(vert)
+                    next_id += 1
+                face_ids.append(point_id_map[key])
+            faces.append(face_ids)
+
+        points_np = np.array(points, dtype=np.float32)
+        faces_np = np.array(faces, dtype=np.int64)
+
+        vtk_points = vtk.vtkPoints()
+        vtk_points.SetData(numpy_to_vtk(points_np))
+
+        # noinspection PyArgumentList
+        vtk_cells = vtk.vtkCellArray()
+        for f in faces_np:
+            id_list = vtk.vtkIdList()
+            for pid in f:
+                id_list.InsertNextId(int(pid))
+            vtk_cells.InsertNextCell(id_list)
+
+        polydata = vtk.vtkPolyData()
+        polydata.SetPoints(vtk_points)
+        polydata.SetPolys(vtk_cells)
+
+        return polydata
