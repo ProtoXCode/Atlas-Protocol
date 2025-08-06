@@ -5,6 +5,16 @@ It documents the ideas, breakthroughs, and phases of development from inception.
 
 ---
 
+### 📅 2025-08-05 – winx_x64 runtime
+- Copied over the remainder of the OCC dll files, it's a bit redundant, some of them might not be needed, but I haven't eliminated those who are not needed yet. They don't directly take up too mich space.
+- I might move the dll's over as a seperate download and provide a script to generate them, but for now the compiled files are ready to use.
+- Included the first public version of my wrapper, the included pyi file should make use of it understandable.
+- Added functionality into the wrapper to display mesh, not tested yet, but should make the models renderable in VTK.
+- Linux runtime files and wrapper exists, not uploaded yet since things change constantly, but could be upped if needed.
+- Still learning C++, 400 pages into Crash Course. Some stuff clicks, other things are still a big mystery.
+
+---
+
 ### 📅 2025-06-17 – Wrapper Work
 - Added several new feautures to the wrapper:
   - Triangle wire shape
