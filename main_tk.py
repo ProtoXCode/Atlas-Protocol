@@ -2,7 +2,7 @@ import customtkinter as ctk
 import os
 import json
 
-from viewer.vtk_viewer import VTKViewer
+# from viewer.vtk_viewer import VTKViewer
 
 PROGRAM_NAME = 'Atlas Protocol'
 PROGRAM_VERSION = 'v0.1'
@@ -94,7 +94,7 @@ class AtlasProtocol(ctk.CTk):
         self.frame_3d_viewer.grid(
             row=0, column=1, rowspan=2, sticky='nsew', padx=5, pady=5)
 
-        self._embed_vtk_viewer()
+        # self._embed_vtk_viewer()
 
         # Top right (Assembly details)
         self.frame_details = ctk.CTkFrame(
@@ -150,16 +150,16 @@ class AtlasProtocol(ctk.CTk):
             else:
                 self.dropdown_model.set('No models found')
 
-    def _embed_vtk_viewer(self):
-        """ Embed VTK viewer into the center frame. """
-        native_tk_frame = self.frame_3d_viewer
-        self.vtk_viewer = VTKViewer(native_tk_frame, width=900, height=700)
-        self.vtk_viewer.pack(fill='both', expand=True)
-
-        # Load the demo STL file
-        stl_path = os.path.join('models', 'atlas_test_cube', 'cube.stl')
-        if os.path.isfile(stl_path):
-            self.vtk_viewer.load_stl(stl_path)
+    # def _embed_vtk_viewer(self):
+    #     """ Embed VTK viewer into the center frame. """
+    #     native_tk_frame = self.frame_3d_viewer
+    #     self.vtk_viewer = VTKViewer(native_tk_frame, width=900, height=700)
+    #     self.vtk_viewer.pack(fill='both', expand=True)
+    #
+    #     # Load the demo STL file
+    #     stl_path = os.path.join('models', 'atlas_test_cube', 'cube.stl')
+    #     if os.path.isfile(stl_path):
+    #         self.vtk_viewer.load_stl(stl_path)
 
 
 if __name__ == '__main__':
