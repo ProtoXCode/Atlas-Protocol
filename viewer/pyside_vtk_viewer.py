@@ -13,12 +13,14 @@ import psutil
 class VTKQtViewer(QMainWindow):
     def __init__(self, parent=None) -> None:
         super().__init__(parent)
+
         self.setWindowTitle('PySide6 VTK Viewer')
         self.setGeometry(100, 100, 800, 600)
 
         # --- Central Widget Setup ---
         central_widget = QWidget(self)
         self.setCentralWidget(central_widget)
+
         layout = QVBoxLayout(central_widget)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(0)
@@ -49,9 +51,7 @@ class VTKQtViewer(QMainWindow):
         self.memory_label.setAlignment(
             Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
         self.memory_label.move(
-            self.vtkWidget.width() - self.memory_label.width() - 18,
-            16
-        )
+            self.vtkWidget.width() - self.memory_label.width() - 18, 16)
         self.memory_label.raise_()
 
         # --- Respond to resizing (keep overlay in top-right) ---
@@ -96,7 +96,7 @@ class VTKQtViewer(QMainWindow):
         actor.SetMapper(mapper)
         actor.GetProperty().SetColor(0.2, 0.7, 0.8)
 
-        self.renderer.RemoveActor(actor)
+        self.renderer.RemoveAllViewProps()
         self.renderer.AddActor(actor)
         self.renderer.ResetCamera()
         self.vtkWidget.GetRenderWindow().Render()

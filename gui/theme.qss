@@ -1,0 +1,27 @@
+/* Panels */
+QWidget#Panel {
+    background-color: #1e1e1e;
+    border: 1px solid #444;
+    border-radius: 12px;
+    padding: 12px;
+}
+
+/* Footer / bottom panel */
+QWidget#Footer {
+    background-color: #181818;
+    border-top: 1px solid #333;
+    padding: 10px 14px;
+}
+
+/* Common controls */
+QLabel { color: #e6e6e6; }
+QComboBox, QPushButton {
+    min-height: 32px;
+    border-radius: 8px;
+    border: 1px solid #3a3a3a;
+    background: #262626;
+    color: #ddd;
+    padding: 4px 10px;
+}
+QComboBox:hover, QPushButton:hover { border-color: #5a5a5a; }
+QPushButton::pressed { background: #2b2b2b; }
