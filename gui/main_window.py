@@ -1,5 +1,10 @@
-from PySide6.QtWidgets import (
-    QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QGridLayout)
+import importlib
+import json
+import sys
+import traceback
+from pathlib import Path
+
+from PySide6.QtWidgets import QMainWindow, QWidget, QGridLayout
 from gui.left_panel import LeftPanel
 from gui.right_panel import RightPanel
 from gui.bottom_panel import BottomPanel
@@ -14,7 +19,13 @@ PANEL_CONTROL_WIDTH = 300
 PANEL_BOM_WIDTH = 300
 PANEL_DRAWING_HEIGHT = 200
 PANEL_TOP_HEIGHT = 100
-MODELS_DIR = './models'
+
+APP_ROOT = Path(__file__).resolve().parents[1]
+MODELS_DIR = APP_ROOT / 'models'
+MODELS_PKG = 'models'
+
+if str(APP_ROOT) not in sys.path:
+    sys.path.insert(0, str(APP_ROOT))
 
 
 class MainWindow(QMainWindow):
@@ -54,7 +65,7 @@ class MainWindow(QMainWindow):
         # Left Panel
         self.left_panel = LeftPanel()
         self.left_panel.setFixedWidth(PANEL_CONTROL_WIDTH)
-        grid.addWidget(self.left_panel, 0, 0, 2, 1)
+        grid.addWidget(self.left_panel, 0, 0, 1, 1)
 
         # 3D Viewer Panel (Center)
         self.vtk_panel = VTKQtViewer()
@@ -62,16 +73,11 @@ class MainWindow(QMainWindow):
         self.vtk_panel.setMinimumWidth(600)
         grid.addWidget(self.vtk_panel, 0, 1, 1, 1)
 
-        # Load mesh from model and render
-        from models.occ_test.main import model
-        tris = model()
-        self.vtk_panel.load_triangles(tris)
-
         # Right Panel
         self.right_panel = RightPanel()
         self.right_panel.setFixedWidth(PANEL_BOM_WIDTH)
         self.right_panel.setMinimumWidth(PANEL_BOM_WIDTH)
-        grid.addWidget(self.right_panel, 0, 2, 2, 1)
+        grid.addWidget(self.right_panel, 0, 2, 1, 1)
 
         # Bottom Panel
         self.bottom_panel = BottomPanel()
@@ -83,3 +89,86 @@ class MainWindow(QMainWindow):
         grid.setRowStretch(0, 1)
         grid.setRowStretch(1, 0)
         grid.setColumnStretch(1, 2)
+
+        # ComboBox
+        self._models = {}
+        self.left_panel.rescan_btn.clicked.connect(
+            self._scan_and_update_models)
+        self.left_panel.model_combo.currentIndexChanged.connect(
+            self._load_selected_model)
+
+        # Initial scan
+        self._scan_and_update_models()
+
+    def _scan_and_update_models(self) -> None:
+        self._models.clear()
+        MODELS_DIR.mkdir(parents=True, exist_ok=True)
+
+        for entry in MODELS_DIR.iterdir():
+            if not entry.is_dir():
+                continue
+
+            init_path = entry / "__init__.py"
+            if not init_path.is_file():
+                continue  # must be a package
+
+            display_name = entry.name
+            func_name = "model"
+
+            cfg_path = entry / "config.json"
+            if cfg_path.is_file():
+                try:
+                    data = json.loads(cfg_path.read_text(encoding="utf-8"))
+                    display_name = data.get("name", display_name)
+                    func_name = data.get("entry", func_name)
+                except Exception as e:
+                    print(f"[models] Failed reading {cfg_path}: {e}")
+
+            # build a **package** name, not a path
+            mod_qualname = f"{MODELS_PKG}.{entry.name}"
+            self._models[display_name] = {
+                "module": mod_qualname,
+                "folder": entry.name,
+                "func": func_name,
+            }
+
+        # populate combo…
+        self.left_panel.model_combo.blockSignals(True)
+        self.left_panel.model_combo.clear()
+        if self._models:
+            self.left_panel.model_combo.addItems(sorted(self._models.keys()))
+        else:
+            self.left_panel.model_combo.addItem("No models found")
+        self.left_panel.model_combo.blockSignals(False)
+
+        if self._models:
+            first = self.left_panel.model_combo.itemText(0)
+            self._load_selected_model(first)
+
+    def _load_selected_model(self, display_name: str) -> None:
+        """ Import selected model module and render its triangles. """
+        info = self._models.get(display_name)
+        if not info:
+            return
+        mod_name = info['module']
+        func_name = info['func']
+
+        try:
+            if mod_name in list(sys.modules.keys()):
+                mod = importlib.reload(importlib.import_module(mod_name))
+            else:
+                mod = importlib.import_module(mod_name)
+
+            if not hasattr(mod, func_name):
+                raise AttributeError(
+                    f'Module {mod_name} has no function {func_name}')
+
+            tris = getattr(mod, func_name)()
+            if not isinstance(tris, list):
+                raise TypeError(
+                    f'{mod_name}.{func_name}() must return a list of triangles')
+            self.vtk_panel.load_triangles(tris)
+
+        except Exception as e:
+            print(f"[models] Failed to load '{display_name}': {e}")
+            traceback.print_exc()

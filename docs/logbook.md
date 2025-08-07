@@ -5,6 +5,12 @@ It documents the ideas, breakthroughs, and phases of development from inception.
 
 ---
 
+### 📅 2025-08-07 – Rendering Mesh
+- GUI looks a lot better now, added styling.
+- ComboBox scans the model folder and updates the list.
+
+---
+
 ### 📅 2025-08-06 – Rendering Mesh
 🚀 **Milestone unlocked!**
 - Added a simple box shape model.

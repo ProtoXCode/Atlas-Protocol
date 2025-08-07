@@ -176,3 +176,4 @@ cython_debug/
 # Atlas Protocol
 !atlas_occ.pyd
 !atlas_occ.pyi
+desktop.ini

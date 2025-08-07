@@ -21,6 +21,26 @@ Atlas isn’t just a tool — it’s a protocol for **co-creating modular system
 
 ---
 
+## ⚙️ Development Status
+
+- **OCC Wrapper**  
+  Built with Pybind11, currently functional with core modeling tools (box, fuse, cut, translate, etc.).  
+  Provides direct access to OpenCascade geometry from Python without external dependencies like Conda.
+
+- **GUI**  
+  PySide6 + VTK viewer now renders geometry **directly from Python modules** (no intermediate STL/STEP files needed).  
+  Live rescan function allows hot-loading of model modules from the `/models` directory.
+
+![GUI](data/images/gui_07_08.png "Early GUI")
+
+### 🔜 Next Steps
+- Expand OCC wrapper with advanced modeling operations (sheet metal bends, fastener library, etc.).
+- Integrate automatic model scanning and intent parsing for richer model metadata.
+- Add card-style panels, theme support, and more interactive GUI controls.
+- Implement export pipelines for STEP, DXF, and drawing generation directly from the viewer.
+
+---
+
 ## 📁 Key Modules
 
 | Module                       | Purpose                                                       |
