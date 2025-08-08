@@ -1,8 +1,7 @@
 import os
 
 import numpy as np
-from PySide6.QtWidgets import QMainWindow, QLabel, QVBoxLayout, \
-    QWidget
+from PySide6.QtWidgets import QMainWindow, QLabel, QVBoxLayout, QWidget
 from PySide6.QtCore import QTimer, Qt
 from vtkmodules.qt.QVTKRenderWindowInteractor import QVTKRenderWindowInteractor
 from vtkmodules.util.numpy_support import numpy_to_vtk

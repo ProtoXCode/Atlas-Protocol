@@ -5,13 +5,14 @@ import traceback
 from pathlib import Path
 
 from PySide6.QtWidgets import QMainWindow, QWidget, QGridLayout
+
 from gui.left_panel import LeftPanel
 from gui.right_panel import RightPanel
 from gui.bottom_panel import BottomPanel
 from viewer.pyside_vtk_viewer import VTKQtViewer
 
 PROGRAM_NAME = 'Atlas Protocol'
-PROGRAM_VERSION = 'v0.1'
+PROGRAM_VERSION = '0.1'
 
 WINDOW_WIDTH = 1500
 WINDOW_HEIGHT = 750
@@ -100,6 +101,13 @@ class MainWindow(QMainWindow):
         # Initial scan
         self._scan_and_update_models()
 
+        # Update model options menu
+        self.left_panel.regenerateRequested.connect(
+            self._regenerate_current_model)
+        self._current_mod = None
+        self._current_fn_name = None
+        self._current_schema = []
+
     def _scan_and_update_models(self) -> None:
         self._models.clear()
         MODELS_DIR.mkdir(parents=True, exist_ok=True)
@@ -108,28 +116,28 @@ class MainWindow(QMainWindow):
             if not entry.is_dir():
                 continue
 
-            init_path = entry / "__init__.py"
+            init_path = entry / '__init__.py'
             if not init_path.is_file():
                 continue  # must be a package
 
             display_name = entry.name
-            func_name = "model"
+            func_name = 'model'
 
-            cfg_path = entry / "config.json"
+            cfg_path = entry / 'config.json'
             if cfg_path.is_file():
                 try:
-                    data = json.loads(cfg_path.read_text(encoding="utf-8"))
-                    display_name = data.get("name", display_name)
-                    func_name = data.get("entry", func_name)
+                    data = json.loads(cfg_path.read_text(encoding='utf-8'))
+                    display_name = data.get('name', display_name)
+                    func_name = data.get('entry', func_name)
                 except Exception as e:
-                    print(f"[models] Failed reading {cfg_path}: {e}")
+                    print(f'[models] Failed reading {cfg_path}: {e}')
 
             # build a **package** name, not a path
-            mod_qualname = f"{MODELS_PKG}.{entry.name}"
+            mod_qualname = f'{MODELS_PKG}.{entry.name}'
             self._models[display_name] = {
-                "module": mod_qualname,
-                "folder": entry.name,
-                "func": func_name,
+                'module': mod_qualname,
+                'folder': entry.name,
+                'func': func_name,
             }
 
         # populate combo…
@@ -138,7 +146,7 @@ class MainWindow(QMainWindow):
         if self._models:
             self.left_panel.model_combo.addItems(sorted(self._models.keys()))
         else:
-            self.left_panel.model_combo.addItem("No models found")
+            self.left_panel.model_combo.addItem('No models found')
         self.left_panel.model_combo.blockSignals(False)
 
         if self._models:
@@ -146,10 +154,15 @@ class MainWindow(QMainWindow):
             self._load_selected_model(first)
 
     def _load_selected_model(self, display_name: str) -> None:
-        """ Import selected model module and render its triangles. """
+        """
+        Import selected model module and render its triangles.
+        Update menu with model options.
+
+        """
         info = self._models.get(display_name)
         if not info:
             return
+
         mod_name = info['module']
         func_name = info['func']
 
@@ -163,12 +176,58 @@ class MainWindow(QMainWindow):
                 raise AttributeError(
                     f'Module {mod_name} has no function {func_name}')
 
-            tris = getattr(mod, func_name)()
-            if not isinstance(tris, list):
-                raise TypeError(
-                    f'{mod_name}.{func_name}() must return a list of triangles')
+            # 1) schema -> build controls
+            schema = getattr(mod, 'PARAMS', [])
+            self.left_panel.build_controls(schema)
+
+            # 2) store current
+            self._current_mod = mod
+            self._current_fn_name = func_name
+            self._current_schema = schema
+
+            # 3) first render using current UI values (defaults)
+            fn = getattr(mod, func_name)
+            kwargs = self.left_panel.values()
+            kwargs = self._coerce_kwargs(kwargs)
+            tris = fn(**kwargs)
             self.vtk_panel.load_triangles(tris)
 
         except Exception as e:
             print(f"[models] Failed to load '{display_name}': {e}")
             traceback.print_exc()
+
+    def _regenerate_current_model(self) -> None:
+        if not self._current_mod or not self._current_fn_name:
+            return
+        try:
+            fn = getattr(self._current_mod, self._current_fn_name)
+            kwargs = self.left_panel.values()
+            kwargs = self._coerce_kwargs(kwargs)
+            tris = fn(**kwargs)
+            self.vtk_panel.load_triangles(tris)
+        except Exception as e:
+            print(f'[models] Failed to regenerate current model: {e}')
+            traceback.print_exc()
+
+    def _coerce_kwargs(self, kwargs: dict) -> dict:
+        out = dict(kwargs)
+        for p in self._current_schema or []:
+            name = p["name"]
+            t = p.get("type", "float")
+            if name not in out:
+                continue
+            try:
+                if t == "float":
+                    out[name] = float(out[name])
+                elif t == "int":
+                    out[name] = int(out[name])
+                elif t == "bool":
+                    # already a bool if QCheckBox; if string, normalize
+                    v = out[name]
+                    out[name] = bool(v) if isinstance(v, (int, float,
+                                                          bool)) else str(
+                        v).lower() in ("1", "true", "yes", "on")
+                # enum/str: leave as-is
+            except Exception as e:
+                print(f'[models] Failed to coerce kwargs: {e}')
+        return out

@@ -5,6 +5,18 @@ It documents the ideas, breakthroughs, and phases of development from inception.
 
 ---
 
+### 📅 2025-08-08 – Model menu & cleanup
+- Adding model menu options into the model itself.
+  - Rebuilds GUI with controls from model file.
+  - Updates on the fly.
+- Cleanup / Removed:
+  - Removed the old TK code, PySide6 is the way.
+  - Bombe / Ripple resolver... Simplified out of existence?
+  - Enigma / Versioning -> GIT!
+  - Titan, scale is hopefully not a problem anymore with the new concept.
+
+---
+
 ### 📅 2025-08-07 – Rendering Mesh
 - GUI looks a lot better now, added styling.
 - ComboBox scans the model folder and updates the list.
