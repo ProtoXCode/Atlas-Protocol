@@ -1,4 +1,5 @@
 import importlib
+import logging
 import json
 import sys
 import traceback
@@ -24,6 +25,8 @@ PANEL_TOP_HEIGHT = 100
 APP_ROOT = Path(__file__).resolve().parents[1]
 MODELS_DIR = APP_ROOT / 'models'
 MODELS_PKG = 'models'
+
+log = logging.getLogger(__name__)
 
 if str(APP_ROOT) not in sys.path:
     sys.path.insert(0, str(APP_ROOT))
@@ -118,7 +121,9 @@ class MainWindow(QMainWindow):
 
             init_path = entry / '__init__.py'
             if not init_path.is_file():
-                continue  # must be a package
+                if entry.name != '__pycache__':
+                    log.info(f'Skipping "{entry.name}" - Must be a package')
+                continue
 
             display_name = entry.name
             func_name = 'model'
@@ -130,7 +135,7 @@ class MainWindow(QMainWindow):
                     display_name = data.get('name', display_name)
                     func_name = data.get('entry', func_name)
                 except Exception as e:
-                    print(f'[models] Failed reading {cfg_path}: {e}')
+                    log.error(f'[models] Failed reading {cfg_path}: {e}')
 
             # build a **package** name, not a path
             mod_qualname = f'{MODELS_PKG}.{entry.name}'
@@ -193,7 +198,7 @@ class MainWindow(QMainWindow):
             self.vtk_panel.load_triangles(tris)
 
         except Exception as e:
-            print(f"[models] Failed to load '{display_name}': {e}")
+            log.error(f'[models] Failed to load {display_name}: {e}')
             traceback.print_exc()
 
     def _regenerate_current_model(self) -> None:
@@ -206,7 +211,7 @@ class MainWindow(QMainWindow):
             tris = fn(**kwargs)
             self.vtk_panel.load_triangles(tris)
         except Exception as e:
-            print(f'[models] Failed to regenerate current model: {e}')
+            log.error(f'[models] Failed to regenerate current model: {e}')
             traceback.print_exc()
 
     def _coerce_kwargs(self, kwargs: dict) -> dict:
@@ -229,5 +234,5 @@ class MainWindow(QMainWindow):
                         v).lower() in ("1", "true", "yes", "on")
                 # enum/str: leave as-is
             except Exception as e:
-                print(f'[models] Failed to coerce kwargs: {e}')
+                log.error(f'[models] Failed to coerce kwargs: {e}')
         return out

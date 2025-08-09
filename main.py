@@ -2,6 +2,10 @@
 import sys
 import os
 
+from atlas.logging_setup import configure_logging
+
+configure_logging()
+
 # --- force Qt to use X11 when running on Wayland, works on Fedora ---
 if os.name == 'posix':
     if os.environ.get('XDG_SESSION_TYPE', '').lower() == 'wayland':
