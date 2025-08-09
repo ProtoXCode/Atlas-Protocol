@@ -1,4 +1,4 @@
-from atlas_runtime import load_atlas_occ
+from atlas_runtime import atlas_occ
 
 PARAMS = [
     {'name': 'width', 'type': float, 'default': 100.0,
@@ -11,9 +11,8 @@ PARAMS = [
 
 
 def model(**kw) -> list[list[float]]:
-    ao = load_atlas_occ()
     w = float(kw.get('width'))
     h = float(kw.get('height'))
     d = float(kw.get('depth'))
-    shape = ao.make_box(w, h, d)
-    return ao.get_triangles(shape)
+    shape = atlas_occ.make_box(w, h, d)
+    return atlas_occ.get_triangles(shape)

@@ -1,5 +1,6 @@
 qt-material
 PySide6
 psutil
+pytest
 numpy
 vtk
