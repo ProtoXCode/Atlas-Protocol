@@ -5,6 +5,14 @@ It documents the ideas, breakthroughs, and phases of development from inception.
 
 ---
 
+### 📅 2025-08-09 – Linux attempt #1
+Trying to get it to work on Linux:
+ - Issue with how to start up PySide6, it at least now runs on Fedora, but only the GUI alone.
+ - Dependencies made a lot of issues, removed the files, added a setup script that clones, builds and sets up the wrapper paths using pathelf.
+ - Still issue with SegFault, might be ABI mismatch, linking things not needed etc. My trusty sidekick had lots of ideas.
+
+---
+
 ### 📅 2025-08-08 – Model menu & cleanup
 - Adding model menu options into the model itself.
   - Rebuilds GUI with controls from model file.
