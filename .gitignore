@@ -177,3 +177,5 @@ cython_debug/
 !atlas_occ.pyd
 !atlas_occ.pyi
 desktop.ini
+linux_x64/
+vcpkg/
