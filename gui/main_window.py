@@ -11,6 +11,7 @@ from gui.left_panel import LeftPanel
 from gui.right_panel import RightPanel
 from gui.bottom_panel import BottomPanel
 from viewer.pyside_vtk_viewer import VTKQtViewer
+from atlas_runtime import atlas_occ
 
 PROGRAM_NAME = 'Atlas Protocol'
 PROGRAM_VERSION = '0.1'
@@ -126,7 +127,7 @@ class MainWindow(QMainWindow):
                 continue
 
             display_name = entry.name
-            func_name = 'model'
+            func_name = 'assembly'
 
             cfg_path = entry / 'config.json'
             if cfg_path.is_file():
@@ -194,7 +195,14 @@ class MainWindow(QMainWindow):
             fn = getattr(mod, func_name)
             kwargs = self.left_panel.values()
             kwargs = self._coerce_kwargs(kwargs)
-            tris = fn(**kwargs)
+
+            shapes = fn(**kwargs)
+            if not isinstance(shapes, list) or not shapes:
+                log.error(f'[models] Assembly must return list of shapes')
+                raise TypeError('assembly() must return list[TopoDS_Shape]')
+
+            compound = atlas_occ.make_compound(shapes)
+            tris = atlas_occ.get_triangles(compound)
             self.vtk_panel.load_triangles(tris)
 
         except Exception as e:
@@ -208,7 +216,13 @@ class MainWindow(QMainWindow):
             fn = getattr(self._current_mod, self._current_fn_name)
             kwargs = self.left_panel.values()
             kwargs = self._coerce_kwargs(kwargs)
-            tris = fn(**kwargs)
+
+            shapes = fn(**kwargs)
+            if not isinstance(shapes, list) or not shapes:
+                raise TypeError('assembly() must return list[TopoDS_Shape]')
+
+            compound = atlas_occ.make_compound(shapes)
+            tris = atlas_occ.get_triangles(compound)
             self.vtk_panel.load_triangles(tris)
         except Exception as e:
             log.error(f'[models] Failed to regenerate current model: {e}')
@@ -216,23 +230,30 @@ class MainWindow(QMainWindow):
 
     def _coerce_kwargs(self, kwargs: dict) -> dict:
         out = dict(kwargs)
+
+        def _tname(t):
+            if t in (float, int, bool, str):
+                return {
+                    float: 'float', int: 'int', bool: 'bool', str: 'str'}[t]
+            if isinstance(t, str):
+                return t.lower()
+            return 'str'
+
         for p in self._current_schema or []:
-            name = p["name"]
-            t = p.get("type", "float")
+            name = p['name']
+            t = _tname(p.get('type', 'float'))
             if name not in out:
                 continue
+            v = out[name]
             try:
-                if t == "float":
-                    out[name] = float(out[name])
-                elif t == "int":
-                    out[name] = int(out[name])
-                elif t == "bool":
-                    # already a bool if QCheckBox; if string, normalize
-                    v = out[name]
-                    out[name] = bool(v) if isinstance(v, (int, float,
-                                                          bool)) else str(
-                        v).lower() in ("1", "true", "yes", "on")
-                # enum/str: leave as-is
+                if t == 'float':
+                    out[name] = float(v)
+                elif t == 'int':
+                    out[name] = int(v)
+                elif t == 'bool':
+                    out[name] = v if isinstance(v, bool) else str(
+                        v).lower() in ('1', 'true', 'yes', 'on')
             except Exception as e:
-                log.error(f'[models] Failed to coerce kwargs: {e}')
+                log.error(
+                    f'[models] Failed to coerce "{name}" ({v!r}) to {t}: {e}')
         return out

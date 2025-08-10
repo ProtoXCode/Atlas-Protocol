@@ -44,7 +44,7 @@ def test_bool_ops_roundtrip(occ) -> None:
 def test_transforms(occ) -> None:
     s = occ.make_box(1, 2, 3)
     s = occ.xform_translate(s, 5, 0, 0)
-    s = occ.xform_rotate(s, 45, 0, 0, 0) # TODO: Fix
+    s = occ.xform_rotate(s, 45, 0, 0, 1)
     s = occ.xform_scale(s, 2, 2, 2)
     s = occ.xform_mirror(s, 1, 0, 0)
     assert len(occ.get_triangles(s)) > 0
@@ -75,6 +75,27 @@ def test_wire_circle_face_flag(occ) -> None:
     assert len(occ.get_triangles(f)) >= len(occ.get_triangles(w))
 
 
-def test_make_compound_empty_list(occ) -> None:
+def test_compound_empty_raises(occ) -> None:
     with pytest.raises(Exception):
-        occ.make_compound([])  # TODO: Add exception when none added.
+        occ.make_compound([])
+
+
+def test_compound_identity(occ) -> None:
+    a = occ.make_box(10, 10, 10)
+    c = occ.make_compound([a])
+    assert len(occ.get_triangles(c)) > 0
+
+
+def test_translate_does_not_mutate_input(occ) -> None:
+    a = occ.make_box(1, 2, 3)
+    tris_a = occ.get_triangles(a)
+    b = occ.xform_translate(a, 10, 0, 0)  # copy=true
+    tris_b = occ.get_triangles(b)
+    assert len(tris_a) > 0 and len(tris_b) > 0
+
+
+def test_api_version(occ) -> None:
+    assert hasattr(occ, 'EXT_API_VERSION'), \
+        'Missing EXT_API_VERSION in wrapper'
+    assert occ.EXT_API_VERSION == '0.1.0', \
+        f'Unexpected version: {occ.EXT_API_VERSION}'

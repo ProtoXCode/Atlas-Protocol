@@ -4,7 +4,7 @@ Atlas OCC Wrapper — core OCC functionality exposed for intent-driven CAD.
 from __future__ import annotations
 import collections.abc
 import typing
-__all__ = ['TopoDS_Shape', 'bool_cut', 'bool_fuse', 'export_step', 'extrude_shape', 'get_triangles', 'make_box', 'make_compound', 'make_cylinder', 'make_face_from_wire', 'make_wire_circle', 'make_wire_face', 'show_shape_popup', 'xform_mirror', 'xform_rotate', 'xform_scale', 'xform_translate']
+__all__ = ['EXT_API_VERSION', 'TopoDS_Shape', 'bool_cut', 'bool_fuse', 'export_step', 'extrude_shape', 'get_triangles', 'make_box', 'make_compound', 'make_cylinder', 'make_face_from_wire', 'make_wire_circle', 'make_wire_face', 'show_shape_popup', 'xform_mirror', 'xform_rotate', 'xform_scale', 'xform_translate']
 class TopoDS_Shape:
     """
     
@@ -77,7 +77,7 @@ def make_box(x: typing.SupportsFloat, y: typing.SupportsFloat, z: typing.Support
     """
 def make_compound(shapes: collections.abc.Sequence[TopoDS_Shape]) -> TopoDS_Shape:
     """
-                Combine multiple shapes into a single compound object.
+                Combine multiple shapes into a single compound object. Raises on empty.
     
                 Parameters:
                     shapes: List of TopoDS_Shapes
@@ -187,3 +187,4 @@ def xform_translate(shape: TopoDS_Shape, dx: typing.SupportsFloat, dy: typing.Su
                 Returns:
                     Translated shape
     """
+EXT_API_VERSION: str = '0.1.0'
