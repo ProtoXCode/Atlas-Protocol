@@ -5,6 +5,16 @@ It documents the ideas, breakthroughs, and phases of development from inception.
 
 ---
 
+### 📅 2025-08-10 – Wrapper Semantics
+ - Updated functions in the wrapper, fixed rotation, added api version.
+ - Added tests.
+ - Reworked how model data is returned.
+   - Model returns list of shapes.
+   - Viewer converts to mesh and renders.
+   - Should be able to pull more functions out of the model now.
+
+---
+
 ### 📅 2025-08-09 – Linux attempt #1
 Trying to get it to work on Linux:
  - Issue with how to start up PySide6, it at least now runs on Fedora, but only the GUI alone.
