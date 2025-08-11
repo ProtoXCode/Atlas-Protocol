@@ -31,12 +31,12 @@ Atlas isn’t just a tool — it’s a protocol for **co-creating modular system
    ```
 
 ### Linux (Tested on Fedora 42):
-```
+   ```
    git https://github.com/ProtoXCode/Atlas-Protocol.git
    pip install -r requirements.txt
    bash tools/setup_linux.sh
    python main.py
-```
+   ```
 
 ---
 
