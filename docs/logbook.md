@@ -5,6 +5,14 @@ It documents the ideas, breakthroughs, and phases of development from inception.
 
 ---
 
+### 📅 2025-08-11 – Linux Wrapper
+ - Linux Wrapper
+   - A lot of debugging to find the culprit, but finally it works on Linux.
+   - The wrapper is now included in the repo.
+   - Compile the rest of the files using the script in tools.
+ - Added "how to run" on README.
+---
+
 ### 📅 2025-08-10 – Wrapper Semantics
  - Updated functions in the wrapper, fixed rotation, added api version.
  - Added tests.

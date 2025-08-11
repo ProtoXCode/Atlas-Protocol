@@ -176,6 +176,7 @@ cython_debug/
 # Atlas Protocol
 !atlas_occ.pyd
 !atlas_occ.pyi
+!atlas_occ.so
 desktop.ini
 linux_x64/
 vcpkg/
