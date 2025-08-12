@@ -5,6 +5,14 @@ It documents the ideas, breakthroughs, and phases of development from inception.
 
 ---
 
+### 📅 2025-08-12 – Wrapper work
+ - Experimenting with:
+   - Curved lines (Currently 2D CNC style with end point and center.)
+   - Text generating, will take some time...
+   - Offset wire, bending and such.
+
+---
+
 ### 📅 2025-08-11 – Linux Wrapper
  - Linux Wrapper
    - A lot of debugging to find the culprit, but finally it works on Linux.
