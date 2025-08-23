@@ -13,6 +13,7 @@ PARAMS = [
      'label': 'Depth (mm)', 'unit': 'mm'}
 ]
 
+
 def make_box(x: float, y: float, z: float):
     """ This function makes a single box shape. """
     shape = atlas_occ.make_box(x, y, z)

@@ -7,6 +7,7 @@ from PySide6 import QtCore
 
 class LeftPanel(QWidget):
     regenerateRequested = Signal()
+    exportStepRequested = Signal()
 
     def __init__(self):
         super().__init__()
@@ -16,13 +17,15 @@ class LeftPanel(QWidget):
 
         self.model_combo = QComboBox()
         self.rescan_btn = QPushButton('↻ Rescan Models')
+        self.export_btn = QPushButton('⬇ Export STEP')
 
-        # --- static header (never cleared) ---
+        # --- Static header (never cleared) ---
         root = QVBoxLayout(self)
         self.setLayout(root)
         root.addWidget(QLabel("Controls"))
         root.addWidget(self.model_combo)
         root.addWidget(self.rescan_btn)
+        root.addWidget(self.export_btn)
 
         self.scroll = QScrollArea()
         self.scroll.setWidgetResizable(True)
@@ -41,9 +44,10 @@ class LeftPanel(QWidget):
         self._debounce.setSingleShot(True)
         self._debounce.setInterval(150)
         self._debounce.timeout.connect(self.regenerateRequested)
+        self.export_btn.clicked.connect(self.exportStepRequested.emit)
 
     def build_controls(self, schema: list[dict]) -> None:
-        # clear dynamic controls only (not header)
+        # Clear dynamic controls only (not header)
         for i in reversed(range(self._form.count())):
             w = self._form.itemAt(i).widget()
             if w:

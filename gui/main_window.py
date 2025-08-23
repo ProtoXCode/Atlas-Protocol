@@ -1,11 +1,14 @@
 import importlib
 import logging
 import json
+import time
 import sys
 import traceback
 from pathlib import Path
 
-from PySide6.QtWidgets import QMainWindow, QWidget, QGridLayout
+from PySide6.QtWidgets import QMainWindow, QWidget, QGridLayout, QMessageBox, \
+    QFileDialog
+from PySide6.QtCore import Qt
 
 from gui.left_panel import LeftPanel
 from gui.right_panel import RightPanel
@@ -15,6 +18,7 @@ from atlas_runtime import atlas_occ
 
 PROGRAM_NAME = 'Atlas Protocol'
 PROGRAM_VERSION = '0.1'
+
 
 WINDOW_WIDTH = 1500
 WINDOW_HEIGHT = 750
@@ -70,6 +74,12 @@ class MainWindow(QMainWindow):
         # Left Panel
         self.left_panel = LeftPanel()
         self.left_panel.setFixedWidth(PANEL_CONTROL_WIDTH)
+        self.left_panel.export_btn.setEnabled(False)
+        self.left_panel.exportStepRequested.connect(self._export_step)
+
+        self.current_model_name = 'atlas_model'
+        self.current_shapes = []
+
         grid.addWidget(self.left_panel, 0, 0, 1, 1)
 
         # 3D Viewer Panel (Center)
@@ -138,7 +148,7 @@ class MainWindow(QMainWindow):
                 except Exception as e:
                     log.error(f'[models] Failed reading {cfg_path}: {e}')
 
-            # build a **package** name, not a path
+            # Build a **package** name, not a path
             mod_qualname = f'{MODELS_PKG}.{entry.name}'
             self._models[display_name] = {
                 'module': mod_qualname,
@@ -146,25 +156,33 @@ class MainWindow(QMainWindow):
                 'func': func_name,
             }
 
-        # populate combo…
+        # Populate combo…
         self.left_panel.model_combo.blockSignals(True)
         self.left_panel.model_combo.clear()
         if self._models:
             self.left_panel.model_combo.addItems(sorted(self._models.keys()))
         else:
+            logging.info('No models found')
             self.left_panel.model_combo.addItem('No models found')
         self.left_panel.model_combo.blockSignals(False)
 
         if self._models:
             first = self.left_panel.model_combo.itemText(0)
             self._load_selected_model(first)
+            self.left_panel.model_combo.setCurrentIndex(0)
 
-    def _load_selected_model(self, display_name: str) -> None:
+    def _load_selected_model(self, arg: str | int) -> None:
         """
         Import selected model module and render its triangles.
         Update menu with model options.
 
         """
+
+        if isinstance(arg, int):
+            display_name = self.left_panel.model_combo.itemText(arg)
+        else:
+            display_name = str(arg)
+
         info = self._models.get(display_name)
         if not info:
             return
@@ -197,6 +215,10 @@ class MainWindow(QMainWindow):
             kwargs = self._coerce_kwargs(kwargs)
 
             shapes = fn(**kwargs)
+
+            self.current_shapes = shapes
+            self.current_model_name = display_name
+
             if not isinstance(shapes, list) or not shapes:
                 log.error(f'[models] Assembly must return list of shapes')
                 raise TypeError('assembly() must return list[TopoDS_Shape]')
@@ -204,6 +226,7 @@ class MainWindow(QMainWindow):
             compound = atlas_occ.make_compound(shapes)
             tris = atlas_occ.get_triangles(compound)
             self.vtk_panel.load_triangles(tris)
+            self.left_panel.export_btn.setEnabled(True)
 
         except Exception as e:
             log.error(f'[models] Failed to load {display_name}: {e}')
@@ -218,6 +241,8 @@ class MainWindow(QMainWindow):
             kwargs = self._coerce_kwargs(kwargs)
 
             shapes = fn(**kwargs)
+            self.current_shapes = shapes
+
             if not isinstance(shapes, list) or not shapes:
                 raise TypeError('assembly() must return list[TopoDS_Shape]')
 
@@ -231,12 +256,12 @@ class MainWindow(QMainWindow):
     def _coerce_kwargs(self, kwargs: dict) -> dict:
         out = dict(kwargs)
 
-        def _tname(t):
-            if t in (float, int, bool, str):
+        def _tname(tn):
+            if tn in (float, int, bool, str):
                 return {
-                    float: 'float', int: 'int', bool: 'bool', str: 'str'}[t]
-            if isinstance(t, str):
-                return t.lower()
+                    float: 'float', int: 'int', bool: 'bool', str: 'str'}[tn]
+            if isinstance(tn, str):
+                return tn.lower()
             return 'str'
 
         for p in self._current_schema or []:
@@ -257,3 +282,59 @@ class MainWindow(QMainWindow):
                 log.error(
                     f'[models] Failed to coerce "{name}" ({v!r}) to {t}: {e}')
         return out
+
+    def _export_step(self) -> None:
+        """ Codename: BloatyMcStepFile and the BaggageReclaimer """
+        shapes = getattr(self, 'current_shapes', None)
+        if not shapes:
+            QMessageBox.information(self, 'Export', 'Nothing to export.')
+            return
+
+        # Estimate size and confirm
+        n = len(shapes)
+        est_bytes = n * 19_500  # Size estimation based upon simple box shape
+        est_gb = est_bytes / (1024 ** 3)
+        HARD_CAP = 50_000 # TODO: Move to config file.
+
+        if n >= HARD_CAP:
+            reply = QMessageBox.question(
+                self, 'Huge export',
+                f'This will export ~{n:,} solids.\n'
+                f'Estimated STEP size ≈ {est_gb:.2f} GB.\n\nProceed?',
+                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
+            )
+            if reply != QMessageBox.StandardButton.Yes:
+                logging.info(
+                    f'Export cancelled at {n:,} solids (est {est_gb:.2f} GB).')
+                return
+            logging.info(
+                f'Absolute madman, exporting: {n:,} solids '
+                f'(est {est_gb:.2f} GB).')
+
+        suggested = f"{getattr(self, 'current_model_name', 'atlas_model')}.step"
+        start = str(Path.home() / suggested)
+        path, _ = QFileDialog.getSaveFileName(
+            self, 'Export STEP', start, 'STEP (*.step *.stp)')
+        if not path:
+            return
+
+        p = Path(path)
+        if p.suffix.lower() not in ('.step', '.stp'):
+            p = p.with_suffix('.step')
+        path = str(p)
+
+        try:
+            self.left_panel.export_btn.setEnabled(False)
+            t0 = time.perf_counter()
+            self.setCursor(Qt.CursorShape.BusyCursor)
+            compound = atlas_occ.make_compound(shapes)
+            atlas_occ.export_step(compound, path)
+            dt = time.perf_counter() - t0
+            QMessageBox.information(self, 'Export', f'Exported:\n{path}')
+            logging.info(f'Export finished in {dt:.2f}s -> {path}')
+        except Exception as e:
+            logging.critical(f'[models] Failed to export STEP: {e}')
+            QMessageBox.critical(self, 'Export failed', str(e))
+        finally:
+            self.unsetCursor()
+            self.left_panel.export_btn.setEnabled(True)

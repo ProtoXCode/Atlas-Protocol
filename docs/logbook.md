@@ -5,6 +5,36 @@ It documents the ideas, breakthroughs, and phases of development from inception.
 
 ---
 
+### 📅 2025-08-12 – Silly model: 2.27Gb STEP file...
+ **GUI**
+ - ✅ Model switching works.
+ - ✅ Added a second model: **grid of cubes**.
+ - ✅Export to **STEP**:
+   - Huge-export preflight (confirm above HARD_CAP).
+   - Logs export time + file path.
+   - Ensures .step suffix.
+
+**What I did**
+ - Generated **50 x 50 x 50** cubes -> **125,000** solids.
+ - App was unresponsive during generate/export (heavy OCC on GUI thread + Python loop overhead).
+ - Exported to STEP -> **2.27GB** file (each cuve written as an independent B-Rep).
+
+**Why it's huge / slow**
+ - Viewer & export both **recompute** geometry right now (no caching).
+ - Grid generation made **125k Python -> C++ calls** (per-cube translate).
+ - STEP writer emits **unique solids** (no instancing), so size explodes (In a fun way).
+
+**Next up**
+ - 🟡 **Cache**: keep 'shapes', 'compound' and 'triangles'; export from cached 'compound' (no recompute).
+ - 🟡 **Background generate**: move build/tessellation to a worker thread; release GIL in wrapper around heavy OCC calls.
+ - 🟡 **Instance-aware STEP** (XCAF/STEPCAF): one prototype + placements -> MB instead of GB.
+ - 🟡 Optional: zip to '.stpZ' after export; add visible progress + cancel.
+
+**Notes**
+ - HARD_CAP currently at **50,000** solids. Just gives a heads-up message, you can of course go higher.
+
+---
+
 ### 📅 2025-08-12 – Wrapper work
  - Experimenting with:
    - Curved lines (Currently 2D CNC style with end point and center.)
