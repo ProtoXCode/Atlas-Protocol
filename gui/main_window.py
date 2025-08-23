@@ -3,7 +3,6 @@ import logging
 import json
 import time
 import sys
-import traceback
 from pathlib import Path
 
 from PySide6.QtWidgets import QMainWindow, QWidget, QGridLayout, QMessageBox, \
@@ -15,10 +14,11 @@ from gui.right_panel import RightPanel
 from gui.bottom_panel import BottomPanel
 from viewer.pyside_vtk_viewer import VTKQtViewer
 from atlas_runtime import atlas_occ
+from atlas_runtime.asm_utils import normalize_assembly, \
+    build_compound_and_triangles, bom_flat, bom_rollup
 
 PROGRAM_NAME = 'Atlas Protocol'
 PROGRAM_VERSION = '0.1'
-
 
 WINDOW_WIDTH = 1500
 WINDOW_HEIGHT = 750
@@ -71,56 +71,120 @@ class MainWindow(QMainWindow):
         grid = QGridLayout(central)
         grid.setSpacing(8)
 
-        # Left Panel
+        # --- Panels ---
         self.left_panel = LeftPanel()
         self.left_panel.setFixedWidth(PANEL_CONTROL_WIDTH)
         self.left_panel.export_btn.setEnabled(False)
-        self.left_panel.exportStepRequested.connect(self._export_step)
 
-        self.current_model_name = 'atlas_model'
-        self.current_shapes = []
-
-        grid.addWidget(self.left_panel, 0, 0, 1, 1)
-
-        # 3D Viewer Panel (Center)
         self.vtk_panel = VTKQtViewer()
         self.vtk_panel.setMinimumHeight(400)
         self.vtk_panel.setMinimumWidth(600)
-        grid.addWidget(self.vtk_panel, 0, 1, 1, 1)
 
-        # Right Panel
         self.right_panel = RightPanel()
         self.right_panel.setFixedWidth(PANEL_BOM_WIDTH)
         self.right_panel.setMinimumWidth(PANEL_BOM_WIDTH)
-        grid.addWidget(self.right_panel, 0, 2, 1, 1)
 
-        # Bottom Panel
         self.bottom_panel = BottomPanel()
         self.bottom_panel.setFixedHeight(PANEL_DRAWING_HEIGHT)
         self.bottom_panel.setMinimumHeight(PANEL_DRAWING_HEIGHT)
-        grid.addWidget(self.bottom_panel, 1, 0, 1, 3)
 
-        # Stretch settings
+        grid.addWidget(self.left_panel, 0, 0, 1, 1)
+        grid.addWidget(self.vtk_panel, 0, 1, 1, 1)
+        grid.addWidget(self.right_panel, 0, 2, 1, 1)
+        grid.addWidget(self.bottom_panel, 1, 0, 1, 3)
         grid.setRowStretch(0, 1)
         grid.setRowStretch(1, 0)
         grid.setColumnStretch(1, 2)
 
-        # ComboBox
         self._models = {}
+        self._current_mod = None
+        self._current_fn_name = None
+        self._current_schema = []
+        self.current_model_name = 'atlas_model'
+        self.current_assembly = None
+        self._busy = False
+
+        self.left_panel.exportStepRequested.connect(self._export_step)
+        self.left_panel.regenerateRequested.connect(
+            self._regenerate_current_model)
         self.left_panel.rescan_btn.clicked.connect(
             self._scan_and_update_models)
         self.left_panel.model_combo.currentIndexChanged.connect(
             self._load_selected_model)
 
-        # Initial scan
         self._scan_and_update_models()
 
-        # Update model options menu
-        self.left_panel.regenerateRequested.connect(
-            self._regenerate_current_model)
-        self._current_mod = None
-        self._current_fn_name = None
-        self._current_schema = []
+    @staticmethod
+    def _count_solid_instances(inst) -> int:
+        """ Sum quantity of all nodes that actually have a shape in model. """
+        total = 0
+        stack = [(inst, 1)]
+        while stack:
+            node, parent_qty = stack.pop()
+            qty = parent_qty * int(getattr(node, 'qty', 1))
+            if getattr(getattr(node, 'ref', None), 'shape', None) is not None:
+                total += qty
+            for ch in getattr(node, 'children', []) or []:
+                stack.append((ch, qty))
+        return total
+
+    def _run_model_pipeline(
+            self, fn, kwargs: dict, display_name: str | None = None):
+        t_all = time.perf_counter()
+
+        # === 1) Model call ===
+        t0 = time.perf_counter()
+        result = fn(**kwargs)
+        t_model = time.perf_counter() - t0
+
+        # === 2) Normalize ===
+        t1 = time.perf_counter()
+        asm = normalize_assembly(result)
+        t_norm = time.perf_counter() - t1
+
+        # === 3) Cache (compound + triangles) ===
+        t2 = time.perf_counter()
+        build_compound_and_triangles(asm)
+        t_cache = time.perf_counter() - t2
+
+        if not asm.triangles:
+            raise TypeError('Model produced no triangles.')
+
+        # === 4) Viewer upload ===
+        t3 = time.perf_counter()
+        self.vtk_panel.load_triangles(asm.triangles)
+        t_view = time.perf_counter() - t3
+
+        # ===5) Stash + UI ===
+        self.current_assembly = asm
+        if display_name:
+            self.current_model_name = display_name
+        self.left_panel.export_btn.setEnabled(True)
+
+        # === 6) BOM ===
+        if hasattr(self.right_panel, 'set_bom'):
+            try:
+                lines = bom_rollup(bom_flat(asm))
+                self.right_panel.set_bom(lines)
+            except Exception as e:
+                logging.exception(f'[bom] set_bom failed: {e}')
+
+        # === 7) Metrics ===
+        try:
+            n_inst = self._count_solid_instances(asm.root)
+        except Exception as e:
+            logging.exception(f'[perf] instance count failed: {e}')
+            n_inst = 0
+
+        t_total = time.perf_counter() - t_all
+        name_tag = f' ({display_name})' if display_name else ''
+        logging.info(
+            f'[perf] pipeline{name_tag} '
+            f'model={t_model:.3f}s norm={t_norm:.3f}s cache={t_cache:.3f}s '
+            f'view={t_view:.3f}s total={t_total:.3f}s '
+            f'inst={n_inst:,} tris={len(asm.triangles):,}')
+
+        return asm
 
     def _scan_and_update_models(self) -> None:
         self._models.clear()
@@ -153,8 +217,7 @@ class MainWindow(QMainWindow):
             self._models[display_name] = {
                 'module': mod_qualname,
                 'folder': entry.name,
-                'func': func_name,
-            }
+                'func': func_name}
 
         # Populate combo…
         self.left_panel.model_combo.blockSignals(True)
@@ -168,16 +231,16 @@ class MainWindow(QMainWindow):
 
         if self._models:
             first = self.left_panel.model_combo.itemText(0)
-            self._load_selected_model(first)
+            self.left_panel.model_combo.blockSignals(True)
             self.left_panel.model_combo.setCurrentIndex(0)
+            self.left_panel.model_combo.blockSignals(False)
+            self._load_selected_model(first)
 
     def _load_selected_model(self, arg: str | int) -> None:
         """
         Import selected model module and render its triangles.
         Update menu with model options.
-
         """
-
         if isinstance(arg, int):
             display_name = self.left_panel.model_combo.itemText(arg)
         else:
@@ -209,49 +272,27 @@ class MainWindow(QMainWindow):
             self._current_fn_name = func_name
             self._current_schema = schema
 
-            # 3) first render using current UI values (defaults)
+            # 3) first render using current UI values (defaults) via the pipeline
             fn = getattr(mod, func_name)
-            kwargs = self.left_panel.values()
-            kwargs = self._coerce_kwargs(kwargs)
-
-            shapes = fn(**kwargs)
-
-            self.current_shapes = shapes
-            self.current_model_name = display_name
-
-            if not isinstance(shapes, list) or not shapes:
-                log.error(f'[models] Assembly must return list of shapes')
-                raise TypeError('assembly() must return list[TopoDS_Shape]')
-
-            compound = atlas_occ.make_compound(shapes)
-            tris = atlas_occ.get_triangles(compound)
-            self.vtk_panel.load_triangles(tris)
-            self.left_panel.export_btn.setEnabled(True)
+            kwargs = self._coerce_kwargs(self.left_panel.values())
+            self._run_model_pipeline(fn, kwargs, display_name)
 
         except Exception as e:
-            log.error(f'[models] Failed to load {display_name}: {e}')
-            traceback.print_exc()
+            logging.exception(f'[models] Failed to load {display_name}: {e}')
 
     def _regenerate_current_model(self) -> None:
+        if self._busy:
+            logging.info('[regen] Suppressed during busy operation')
+            return
         if not self._current_mod or not self._current_fn_name:
             return
         try:
             fn = getattr(self._current_mod, self._current_fn_name)
-            kwargs = self.left_panel.values()
-            kwargs = self._coerce_kwargs(kwargs)
-
-            shapes = fn(**kwargs)
-            self.current_shapes = shapes
-
-            if not isinstance(shapes, list) or not shapes:
-                raise TypeError('assembly() must return list[TopoDS_Shape]')
-
-            compound = atlas_occ.make_compound(shapes)
-            tris = atlas_occ.get_triangles(compound)
-            self.vtk_panel.load_triangles(tris)
+            kwargs = self._coerce_kwargs(self.left_panel.values())
+            self._run_model_pipeline(fn, kwargs)
         except Exception as e:
-            log.error(f'[models] Failed to regenerate current model: {e}')
-            traceback.print_exc()
+            logging.exception(
+                f'[models] Failed to regenerate current model: {e}')
 
     def _coerce_kwargs(self, kwargs: dict) -> dict:
         out = dict(kwargs)
@@ -284,57 +325,90 @@ class MainWindow(QMainWindow):
         return out
 
     def _export_step(self) -> None:
-        """ Codename: BloatyMcStepFile and the BaggageReclaimer """
-        shapes = getattr(self, 'current_shapes', None)
-        if not shapes:
+        """Export cached compound to STEP without recomputing geometry."""
+        self.left_panel.cancel_pending_regen()
+        if getattr(self, '_busy', False):
+            logging.info('[export] blocked: busy flag set')
+            return
+
+        asm = getattr(self, 'current_assembly', None)
+        if not asm or asm.compound is None:
             QMessageBox.information(self, 'Export', 'Nothing to export.')
             return
 
-        # Estimate size and confirm
-        n = len(shapes)
-        est_bytes = n * 19_500  # Size estimation based upon simple box shape
-        est_gb = est_bytes / (1024 ** 3)
-        HARD_CAP = 50_000 # TODO: Move to config file.
-
-        if n >= HARD_CAP:
-            reply = QMessageBox.question(
-                self, 'Huge export',
-                f'This will export ~{n:,} solids.\n'
-                f'Estimated STEP size ≈ {est_gb:.2f} GB.\n\nProceed?',
-                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
-            )
-            if reply != QMessageBox.StandardButton.Yes:
-                logging.info(
-                    f'Export cancelled at {n:,} solids (est {est_gb:.2f} GB).')
-                return
-            logging.info(
-                f'Absolute madman, exporting: {n:,} solids '
-                f'(est {est_gb:.2f} GB).')
-
-        suggested = f"{getattr(self, 'current_model_name', 'atlas_model')}.step"
-        start = str(Path.home() / suggested)
-        path, _ = QFileDialog.getSaveFileName(
-            self, 'Export STEP', start, 'STEP (*.step *.stp)')
-        if not path:
-            return
-
-        p = Path(path)
-        if p.suffix.lower() not in ('.step', '.stp'):
-            p = p.with_suffix('.step')
-        path = str(p)
-
+        self._busy = True
         try:
+            # stop any pending debounce so nothing swaps assemblies mid-export
+            try:
+                if hasattr(self.left_panel, '_debounce'):
+                    # noinspection PyProtectedMember
+                    self.left_panel._debounce.stop()
+            except Exception as e:
+                logging.exception(f'[export] debounce stop failed: {e}')
+
+            logging.info(
+                f'[export] using cached assembly_py_id=0x{id(asm):x} '
+                f'compound_py_id=0x{id(asm.compound):x} dirty={asm.dirty}'
+            )
+
+            # estimate solids (cheap)
+            try:
+                n = self._count_solid_instances(asm.root)
+            except Exception as e:
+                logging.exception(f'[export] instance count failed: {e}')
+                n = 0
+
+            # big export guard
+            est_bytes = n * 19_500
+            est_gb = est_bytes / (1024 ** 3)
+            HARD_CAP = 50_000
+            if n >= HARD_CAP:
+                reply = QMessageBox.question(
+                    self,
+                    'Huge export',
+                    f'This will export ~{n:,} solids.\n'
+                    f'Estimated STEP size ~{est_gb:.2f} GB.\n\nProceed?',
+                    QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+                )
+                if reply != QMessageBox.StandardButton.Yes:
+                    logging.info(
+                        f'[export] canceled at {n:,} solids (~{est_gb:.2f} GB)')
+                    return
+                logging.info(
+                    f'[export] proceeding with {n:,} solids (~{est_gb:.2f} GB)')
+
+            # choose path (fixed quotes)
+            suggested = f"{getattr(self, 'current_model_name', 'atlas_model')}.step"
+            start = str(Path.home() / suggested)
+            path, _ = QFileDialog.getSaveFileName(
+                self, 'Export STEP', start, 'STEP (*.step *.stp)'
+            )
+            if not path:
+                return
+
+            p = Path(path)
+            if p.suffix.lower() not in ('.step', '.stp'):
+                p = p.with_suffix('.step')
+            path = str(p)
+
+            # export cached compound
             self.left_panel.export_btn.setEnabled(False)
-            t0 = time.perf_counter()
             self.setCursor(Qt.CursorShape.BusyCursor)
-            compound = atlas_occ.make_compound(shapes)
-            atlas_occ.export_step(compound, path)
+            t0 = time.perf_counter()
+
+            atlas_occ.export_step(asm.compound, path)
+
             dt = time.perf_counter() - t0
             QMessageBox.information(self, 'Export', f'Exported:\n{path}')
-            logging.info(f'Export finished in {dt:.2f}s -> {path}')
+            logging.info(f'[export] finished in {dt:.2f}s -> {path}')
+
         except Exception as e:
-            logging.critical(f'[models] Failed to export STEP: {e}')
+            logging.exception(f'[export] failed: {e}')
             QMessageBox.critical(self, 'Export failed', str(e))
         finally:
-            self.unsetCursor()
+            try:
+                self.unsetCursor()
+            except Exception as e:
+                logging.exception(f'[export] unsetCursor failed: {e}')
             self.left_panel.export_btn.setEnabled(True)
+            self._busy = False

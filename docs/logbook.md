@@ -5,7 +5,17 @@ It documents the ideas, breakthroughs, and phases of development from inception.
 
 ---
 
-### 📅 2025-08-12 – Silly model: 2.27Gb STEP file...
+### 📅 2025-08-23 – Model dataclasses, optimization, refactor
+ - Added dataclasses to the model, this will ensure data can flow through to the GUI in all sorts.
+ - Fixed problem with edit fields not functioning until model switch or rescanned.
+ - Model refactor:
+   - Dataclasses, will make any data transferable from model to GUI.
+   - Timer for both loading and exporting model.
+ - Model export uses same data as viewer now, still slow due to OCC writing.
+
+---
+
+### 📅 2025-08-22 – Silly model: 2.27Gb STEP file...
  **GUI**
  - ✅ Model switching works.
  - ✅ Added a second model: **grid of cubes**.

@@ -114,3 +114,6 @@ class LeftPanel(QWidget):
             elif isinstance(w, QLineEdit):
                 vals[name] = w.text()
         return vals
+
+    def cancel_pending_regen(self) -> None:
+        self._debounce.stop()

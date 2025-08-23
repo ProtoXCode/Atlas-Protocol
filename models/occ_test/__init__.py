@@ -1,30 +1,40 @@
-from atlas_runtime import atlas_occ
+from atlas_runtime import atlas_occ, AtlasAssembly, AtlasPart, AtlasInstance
 
-# PARAMS are passed onto the GUI and is turned into editable fields.
-# The assembly simply packs up the components and returns it to GUI.
-
+# PARAMS are passed to the GUI and turned into editable fields.
 
 PARAMS = [
-    {'name': 'width', 'type': float, 'default': 100.0,
-     'label': 'Width (mm)', 'unit': 'mm'},
-    {'name': 'height', 'type': float, 'default': 50.0,
-     'label': 'Height (mm)', 'unit': 'mm'},
-    {'name': 'depth', 'type': float, 'default': 25.0,
-     'label': 'Depth (mm)', 'unit': 'mm'}
-]
+    {'name': 'width', 'type': float, 'default': 100.0, 'label': 'Width (mm)',
+     'unit': 'mm'},
+    {'name': 'height', 'type': float, 'default': 50.0, 'label': 'Height (mm)',
+     'unit': 'mm'},
+    {'name': 'depth', 'type': float, 'default': 25.0, 'label': 'Depth (mm)',
+     'unit': 'mm'}]
 
 
-def make_box(x: float, y: float, z: float):
-    """ This function makes a single box shape. """
-    shape = atlas_occ.make_box(x, y, z)
-    return shape
-
-
-def assembly(**kw) -> list[list[float]]:
-    """ This is the complete assembly of the parts. """
+def assembly(**kw) -> AtlasAssembly:
+    """Return a proper AtlasAssembly: root -> [single box instance]."""
     w = float(kw.get('width'))
     h = float(kw.get('height'))
     d = float(kw.get('depth'))
-    shape = make_box(w, h, d)
-    shapes = [shape]
-    return shapes
+
+    shape = atlas_occ.make_box(w, h, d)
+    size_tag = f'{int(w)}x{int(h)}x{int(d)}'
+    part = AtlasPart(
+        def_id=f'BOX-{size_tag}',
+        shape=shape,
+        part_no=f'BOX-{size_tag}',
+        desc=f'Box {w}×{h}×{d} mm',
+        material=None,
+        drawings=[],
+        props={},
+        bom_line=None)
+
+    inst = AtlasInstance(ref=part, xform=(0.0, 0.0, 0.0), qty=1)
+
+    root_part = AtlasPart(def_id='_ROOT_SINGLE_BOX', shape=None,
+                          part_no='ASM-BOX',
+                          desc=f'Single box {size_tag}')
+    root = AtlasInstance(ref=root_part, xform=(0.0, 0.0, 0.0), qty=1,
+                         children=[inst])
+
+    return AtlasAssembly(root=root, dirty=True)

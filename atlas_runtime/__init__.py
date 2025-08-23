@@ -1,8 +1,12 @@
 from __future__ import annotations
-
+from dataclasses import dataclass, field
+from typing import Any, Dict, List, Tuple, Optional
 import os, sys, platform, importlib
 
-__all__ = ['atlas_occ']
+__all__ = ['atlas_occ',
+           'AtlasPart',
+           'AtlasAssembly',
+           'AtlasInstance']
 
 _RT = os.getenv('ATLAS_RUNTIME')
 
@@ -31,3 +35,57 @@ else:
             _dlldir + os.pathsep + os.environ.get('LD_LIBRARY_PATH', ''))
 
 atlas_occ = importlib.import_module('atlas_occ')
+
+TopoDS_Shape = Any
+
+
+@dataclass(frozen=True)
+class AtlasBom:
+    part_no: str
+    qty: float
+    unit: str = 'pcs'
+    desc: str = ''
+    props: Dict[str, Any] = field(default_factory=dict)
+
+
+@dataclass(frozen=True)
+class AtlasPart:
+    def_id: str
+    shape: TopoDS_Shape
+    part_no: str
+    desc: str = ''
+    material: Optional[str] = None
+    drawings: List[str] = field(default_factory=list)
+    props: Dict[str, Any] = field(default_factory=dict)
+    bom_line: Optional[AtlasBom] = None
+
+
+@dataclass(frozen=False)
+class AtlasInstance:
+    ref: AtlasPart
+    xform: Any
+    qty: int = 1
+    children: List['AtlasInstance'] = field(default_factory=list)
+    bom_role: str = 'normal'  # normal | phantom | purchased
+    overrides: Dict[str, Any] = field(default_factory=dict)
+
+
+@dataclass(frozen=False)
+class AtlasAssembly:
+    root: AtlasInstance
+    # Caches for GUI/export
+    triangles: Optional[List[List[float]]] = None
+    viewer_instances: Optional[List[Tuple[str, Any, int]]] = None
+    compound: Optional[TopoDS_Shape] = None
+    bom_total: Optional[List[AtlasBom]] = None
+    dirty: bool = True
+
+
+from atlas_runtime.asm_utils import (normalize_assembly,
+                                     build_compound_and_triangles,
+                                     bom_flat, bom_rollup)
+
+__all__ += ['normalize_assembly',
+            'build_compound_and_triangles',
+            'bom_flat',
+            'bom_rollup']
