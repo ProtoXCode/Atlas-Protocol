@@ -1,7 +1,7 @@
 import os
 
 import numpy as np
-from PySide6.QtWidgets import QMainWindow, QLabel, QVBoxLayout, QWidget
+from PySide6.QtWidgets import QLabel, QVBoxLayout, QWidget
 from PySide6.QtCore import QTimer, Qt
 from vtkmodules.qt.QVTKRenderWindowInteractor import QVTKRenderWindowInteractor
 from vtkmodules.util.numpy_support import numpy_to_vtk
@@ -9,18 +9,11 @@ import vtk
 import psutil
 
 
-class VTKQtViewer(QMainWindow):
+class VTKQtViewer(QWidget):
     def __init__(self, parent=None) -> None:
         super().__init__(parent)
 
-        self.setWindowTitle('PySide6 VTK Viewer')
-        self.setGeometry(100, 100, 800, 600)
-
-        # --- Central Widget Setup ---
-        central_widget = QWidget(self)
-        self.setCentralWidget(central_widget)
-
-        layout = QVBoxLayout(central_widget)
+        layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(0)
 
@@ -33,7 +26,6 @@ class VTKQtViewer(QMainWindow):
         self.vtkWidget.GetRenderWindow().AddRenderer(self.renderer)
 
         self.vtkWidget.Initialize()
-        self.vtkWidget.Start()
 
         # --- Memory Overlay ---
         self.memory_label = QLabel('RAM: --- MB', self.vtkWidget)
