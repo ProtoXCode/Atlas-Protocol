@@ -11,3 +11,6 @@ class RightPanel(QWidget):
         layout = QVBoxLayout(self)
         layout.addWidget(QLabel('BOM / Details'))
         layout.addStretch()
+
+    def set_bom(self, bom) -> None:
+        pass # TODO: Implement

@@ -1,23 +1,28 @@
 from __future__ import annotations
+import time, traceback, sys
+import logging
 
-from PySide6.QtCore import QObject, Signal, Slot
+from PySide6.QtCore import QObject, Signal, Slot, QRunnable
 
 from atlas_runtime.asm_utils import normalize_assembly, \
     build_compound_and_triangles
 
 
-class ModelWorker(QObject):
-    finished = Signal(object, dict)
+class WorkerSignals(QObject):
+    result = Signal(object, dict)
     error = Signal(str)
+    finished = Signal()
 
-    def __init__(self, fn, kwargs: dict) -> None:
+
+class ModelRunnable(QRunnable):
+    def __init__(self, fn, kwargs: dict):
         super().__init__()
         self.fn = fn
         self.kwargs = kwargs
+        self.signals = WorkerSignals()
 
     @Slot()
-    def run(self) -> None:
-        import time
+    def run(self):
         try:
             t_all = time.perf_counter()
 
@@ -34,18 +39,24 @@ class ModelWorker(QObject):
             t_cache = time.perf_counter() - t2
 
             stats = {
-                't_model': t_model, 't_norm': t_norm, 't_cache': t_cache,
+                't_model': t_model,
+                't_norm': t_norm,
+                't_cache': t_cache,
                 't_total': time.perf_counter() - t_all,
-                'tris': len(asm.triangles or [])}
-
-            self.finished.emit(asm, stats)
+                'tris': len(asm.triangles or []),
+            }
+            self.signals.result.emit(asm, stats)
         except Exception as e:
-            import traceback
+            self.signals.error.emit(traceback.format_exc())
+            logging.error(f'Workers pool exception: {e}')
             traceback.print_exc()
-            self.error.emit(str(e))
+            exctype, value = sys.exc_info()[:2]
+            self.signals.error.emit(f'{exctype.__name__}: {value}')
+        finally:
+            self.signals.finished.emit()
 
 
-class ExportWorker(QObject):
+class ExportWorker(QRunnable):
     finished = Signal(float, str)
     error = Signal(str)
 

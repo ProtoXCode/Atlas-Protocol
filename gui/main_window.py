@@ -7,11 +7,12 @@ from pathlib import Path
 
 from PySide6.QtWidgets import QMainWindow, QWidget, QGridLayout, QMessageBox, \
     QFileDialog
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt, QThreadPool, QTimer
 
 from gui.left_panel import LeftPanel
 from gui.right_panel import RightPanel
 from gui.bottom_panel import BottomPanel
+from gui.workers import ModelRunnable
 from viewer.pyside_vtk_viewer import VTKQtViewer
 from atlas_runtime import atlas_occ
 from atlas_runtime.asm_utils import normalize_assembly, \
@@ -68,6 +69,10 @@ class MainWindow(QMainWindow):
         central = QWidget()
         self.setCentralWidget(central)
 
+        self.pool = QThreadPool.globalInstance()
+        self.pool.setMaxThreadCount(1)
+        self._job_running = False
+
         grid = QGridLayout(central)
         grid.setSpacing(8)
 
@@ -112,7 +117,7 @@ class MainWindow(QMainWindow):
         self.left_panel.model_combo.currentIndexChanged.connect(
             self._load_selected_model)
 
-        self._scan_and_update_models()
+        QTimer.singleShot(0, self._scan_and_update_models)
 
     @staticmethod
     def _count_solid_instances(inst) -> int:
@@ -412,3 +417,54 @@ class MainWindow(QMainWindow):
                 logging.exception(f'[export] unsetCursor failed: {e}')
             self.left_panel.export_btn.setEnabled(True)
             self._busy = False
+
+    def _start_model_job(self, fn, kwargs: dict,
+                         display_name: str | None = None) -> None:
+        if self._job_running:
+            logging.info('[model] skipped: job already running')
+            return
+
+        self._job_running = True
+        self.left_panel.export_btn.setEnabled(False)
+
+        job = ModelRunnable(fn, kwargs)
+
+        def _on_result(asm, stats):
+            # UI/VTK only on main thread
+            if not asm.triangles:
+                raise TypeError('Model produced no triangles')
+            # Queue a tick just to be extra safe with GL init
+            QTimer.singleShot(0, lambda: self.vtk_panel.load_triangles(asm.triangles))
+
+            self.current_assembly = asm
+            if display_name:
+                self.current_model_name = display_name
+
+            if hasattr(self, 'set_bom'):
+                try:
+                    from atlas_runtime.asm_utils import bom_flat, bom_rollup
+                    self.right_panel.set_bom(bom_rollup(bom_flat(asm)))
+                except Exception as e:
+                    logging.exception(f'[model] set_bom failed: {e}')
+
+            logging.info(
+                f"[perf] pool pipeline{f' ({display_name})' if display_name else ''} "
+                f"model={stats['t_model']:.3f}s norm={stats['t_norm']:.3f}s "
+                f"cache={stats['t_cache']:.3f}s total={stats['t_total']:.3f}s "
+                f"tris={stats['tris']:,}")
+
+            self.left_panel.export_btn.setEnabled(True)
+
+        def _on_error(msg: str) -> None:
+            logging.exception(f'[model] failed: {msg}')
+            QMessageBox.critical(self, 'Model failed', msg)
+            self.left_panel.export_btn.setEnabled(True)
+
+        def _on_finished() -> None:
+            self._job_running = False
+
+        job.signals.result.connect(_on_result)
+        job.signals.error.connect(_on_error)
+        job.signals.finished.connect(_on_finished)
+
+        self.pool.start(job)
