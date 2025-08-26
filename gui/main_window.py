@@ -2,12 +2,15 @@ import importlib
 import logging
 import json
 import sys
+import os
+import time
 from pathlib import Path
 
 from PySide6.QtWidgets import QMainWindow, QWidget, QGridLayout, QMessageBox, \
-    QFileDialog
+    QFileDialog, QApplication
 from PySide6.QtCore import Qt, QThreadPool, QTimer
 
+from atlas_runtime import build_compound_and_triangles
 from gui.left_panel import LeftPanel
 from gui.right_panel import RightPanel
 from gui.bottom_panel import BottomPanel
@@ -15,7 +18,7 @@ from gui.workers import ModelRunnable, ExportWorker
 from viewer.pyside_vtk_viewer import VTKQtViewer
 
 PROGRAM_NAME = 'Atlas Protocol'
-PROGRAM_VERSION = '0.1'
+PROGRAM_VERSION = '0.2'
 
 WINDOW_WIDTH = 1500
 WINDOW_HEIGHT = 750
@@ -42,7 +45,7 @@ class MainWindow(QMainWindow):
          - Parameterized input and control (left)
          - Real-time 3D model viewer (center)
          - Resolved BOM overview (right)
-        - Drawing/export previews (bottom)
+         - Drawing/export previews (bottom)
 
     Designed as a logic-first interface for interacting with declarative part
     definitions, structure resolution, and digital twin output.
@@ -66,7 +69,7 @@ class MainWindow(QMainWindow):
         self.setCentralWidget(central)
 
         self.pool = QThreadPool.globalInstance()
-        self.pool.setMaxThreadCount(4)
+        self.pool.setMaxThreadCount(max(2, os.cpu_count() - 2))
         self._job_running = False
         self._pending_job = None
 
@@ -290,16 +293,21 @@ class MainWindow(QMainWindow):
         job = ModelRunnable(fn, kwargs)
         self._last_job = job
 
-        def _on_result(asm, stats):
+        def _on_result(processed_data, stats):
             try:
                 self.unsetCursor()
 
-                # UI/VTK only on main thread
-                if not asm.triangles:
-                    raise TypeError('Model produced no triangles')
+                asm = processed_data['assembly']
+                optimized_triangles = processed_data['triangles']
 
-                # Load triangles - this should be in the main thread-safe operation
-                self.vtk_panel.load_triangles(asm.triangles)
+                logging.info(
+                    f'[main] Loading pre-processed triangles into VTK...')
+                vtk_start = time.perf_counter()
+
+                self.vtk_panel.load_triangles(optimized_triangles)
+
+                vtk_time = time.perf_counter() - vtk_start
+                logging.info(f'[main] VTK load time: {vtk_time:.3f}s')
 
                 self.current_assembly = asm
                 if display_name:
@@ -307,24 +315,21 @@ class MainWindow(QMainWindow):
 
                 # Update BOM
                 if hasattr(self.right_panel, 'set_bom'):
-                    try:
-                        from atlas_runtime.asm_utils import bom_flat, \
-                            bom_rollup
-                        self.right_panel.set_bom(bom_rollup(bom_flat(asm)))
-                    except Exception as e:
-                        logging.exception(f'[model] set_bom failed: {e}')
+                    QTimer.singleShot(10, lambda: self._update_bom(asm))
 
                 # Log performance and stats
                 logging.info(
-                    f"[perf] pool pipeline{f' ({display_name})' if display_name else ''} "
+                    f"[perf] optimized pipeline{f' ({display_name})' if display_name else ''} "
                     f"model={stats['t_model']:.3f}s norm={stats['t_norm']:.3f}s "
-                    f"cache={stats['t_cache']:.3f}s total={stats['t_total']:.3f}s "
-                    f"inst={stats['t_inst']:,} "
-                    f"tris={stats['tris']:,}")
+                    f"cache={stats['t_cache']:.3f}s prep={stats['t_vtk_prep']:.3f}s "
+                    f"vtk={vtk_time:.3f}s total={stats['t_total']:.3f}s "
+                    f"inst={stats['t_inst']:,} tris={stats['tris']:,}")
 
                 self.left_panel.export_btn.setEnabled(True)
+                self._show_perf_in_status(stats, vtk_time, display_name)
 
             except Exception as e:
+                self.unsetCursor()
                 logging.exception(f'[model] result handler failed: {e}')
 
         def _on_error(msg: str) -> None:
@@ -370,8 +375,21 @@ class MainWindow(QMainWindow):
         # Start the job
         self.pool.start(job)
 
+    def _update_bom(self, asm):
+        """
+        Update BOM in a separate method to avoid blocking main result handler
+        """
+        try:
+            from atlas_runtime.asm_utils import bom_flat, bom_rollup
+            bom_start = time.perf_counter()
+            self.right_panel.set_bom(bom_rollup(bom_flat(asm)))
+            bom_time = time.perf_counter() - bom_start
+            logging.info(f'[main] BOM update took {bom_time:.3f}s')
+        except Exception as e:
+            logging.exception(f'[model] BOM update failed: {e}')
+
     def _export_step_async(self) -> None:
-        """Async version of STEP export using worker thread."""
+        """ Async version of STEP export using worker thread """
         self.left_panel.cancel_pending_regen()
         if getattr(self, '_busy', False):
             logging.info('[export] blocked: busy flag set')
@@ -383,7 +401,7 @@ class MainWindow(QMainWindow):
             return
 
         # Get file path first (on main thread)
-        suggested = f"{getattr(self, 'current_model_name', 'atlas_model')}.step"
+        suggested = f'{getattr(self, 'current_model_name', 'atlas_model')}.step'
         start = str(Path.home() / suggested)
         path, _ = QFileDialog.getSaveFileName(
             self, 'Export STEP', start, 'STEP (*.step *.stp)'
@@ -472,3 +490,199 @@ class MainWindow(QMainWindow):
 
         # Start export
         self.pool.start(export_worker)
+
+    def _process_assembly_chunked(self, asm, stats, display_name=None):
+        """ Process assembly in chunks with GUI updates between """
+
+        # Show progress
+        self.setCursor(Qt.CursorShape.WaitCursor)
+        self.statusBar().showMessage('Building geometry...')
+
+        # Step 1: Build triangles with periodic GUI updates
+        self._chunk_build_triangles(asm, stats, display_name)
+
+    def _chunk_build_triangles(self, asm, stats, display_name):
+        """ Build triangles with chunked processing """
+        self._current_asm = asm
+        self._current_stats = stats
+        self._current_display_name = display_name
+
+        start_time = time.perf_counter()
+
+        # Try to build triangles in one go, but with processEvents
+        try:
+            # Process events every 100ms during triangle building
+            self._triangle_timer = QTimer()
+            self._triangle_timer.timeout.connect(
+                self._process_events_during_triangles)
+            self._triangle_timer.start(50)  # Process events every 50ms
+
+            # Do the heavy lifting
+            build_compound_and_triangles(asm)
+
+            # Stop the timer
+            self._triangle_timer.stop()
+
+            cache_time = time.perf_counter() - start_time
+            stats['t_cache'] = cache_time
+
+            # Continue with VTK processing
+            self._chunk_vtk_processing()
+
+        except Exception as e:
+            if hasattr(self, '_triangle_timer'):
+                self._triangle_timer.stop()
+            raise e
+
+    @staticmethod
+    def _process_events_during_triangles():
+        """ Process GUI events during triangle building """
+        QApplication.processEvents()
+
+    def _chunk_vtk_processing(self):
+        """ Process VTK loading in chunks """
+        asm = self._current_asm
+        stats = self._current_stats
+        display_name = self._current_display_name
+
+        if not asm.triangles:
+            raise TypeError('Model produced no triangles')
+
+        # Count instances
+        try:
+            stats['t_inst'] = self._count_solid_instances(asm.root)
+        except Exception as e:
+            logging.exception(f'[perf] instance count failed: {e}')
+            stats['t_inst'] = 0
+
+        stats['tris'] = len(asm.triangles or [])
+
+        # If we have a lot of triangles, process VTK in chunks
+        if len(asm.triangles) > 10000:
+            self._chunk_vtk_large(asm, stats, display_name)
+        else:
+            self._process_vtk_simple(asm, stats, display_name)
+
+    def _chunk_vtk_large(self, asm, stats, display_name):
+        """ Handle large triangle counts with chunked VTK processing """
+        self.statusBar().showMessage(
+            f'Loading {len(asm.triangles):,} triangles...')
+
+        # Create a timer to process VTK with GUI updates
+        self._vtk_timer = QTimer()
+        self._vtk_start_time = time.perf_counter()
+
+        # Start VTK processing on next event loop iteration
+        QTimer.singleShot(10, lambda: self._do_vtk_with_progress(asm, stats,
+                                                                 display_name))
+
+    def _do_vtk_with_progress(self, asm, stats, display_name):
+        """ Do VTK processing with periodic progress updates """
+        try:
+            # Process events before starting
+            QApplication.processEvents()
+
+            vtk_start = time.perf_counter()
+
+            # Use the optimized VTK loader
+            self._load_triangles_optimized(asm.triangles)
+
+            vtk_time = time.perf_counter() - vtk_start
+            logging.info(f'[main] VTK loading took {vtk_time:.3f}s')
+
+            # Finish up
+            self._finish_model_processing(asm, stats, display_name, vtk_time)
+
+        except Exception as e:
+            logging.exception(f'[model] VTK processing failed: {e}')
+
+    def _load_triangles_optimized(self, triangles):
+        """Optimized triangle loading with progress updates"""
+        triangle_count = len(triangles)
+
+        if triangle_count < 1000:
+            self.vtk_panel.load_triangles(triangles)
+            return
+
+        logging.info(
+            f'[vtk] Loading {triangle_count:,} triangles with optimization')
+
+        # Update status periodically during VTK operations
+        original_render_mesh = self.vtk_panel.render_mesh
+
+        def render_mesh_with_progress(tris):
+            # Process events every so often during mesh building
+            for i in range(0, len(tris), 10000):
+                if i > 0:
+                    self.statusBar().showMessage(
+                        f'Processing triangles {i:,}/{len(tris):,}...')
+                    QApplication.processEvents()
+            return original_render_mesh(tris)
+
+        # Temporarily replace the render_mesh method
+        self.vtk_panel.render_mesh = render_mesh_with_progress
+
+        try:
+            self.vtk_panel.load_triangles(triangles)
+        finally:
+            # Restore original method
+            self.vtk_panel.render_mesh = original_render_mesh
+
+    def _process_vtk_simple(self, asm, stats, display_name):
+        """Simple VTK processing for small models"""
+        vtk_start = time.perf_counter()
+        self.vtk_panel.load_triangles(asm.triangles)
+        vtk_time = time.perf_counter() - vtk_start
+        logging.info(f'[main] VTK loading took {vtk_time:.3f}s')
+
+        self._finish_model_processing(asm, stats, display_name, vtk_time)
+
+    def _finish_model_processing(self, asm, stats, display_name,
+                                 vtk_time: float = 0.0) -> None:
+        """ Finish model processing and update UI """
+        try:
+            self.current_assembly = asm
+            if display_name:
+                self.current_model_name = display_name
+
+            # Update BOM
+            if hasattr(self.right_panel, 'set_bom'):
+                try:
+                    from atlas_runtime.asm_utils import bom_flat, bom_rollup
+                    self.right_panel.set_bom(bom_rollup(bom_flat(asm)))
+                except Exception as e:
+                    logging.exception(f'[model] set_bom failed: {e}')
+
+            # Log performance
+            logging.info(
+                f"[perf] chunked pipeline{f' ({display_name})' if display_name else ''} "
+                f"model={stats['t_model']:.3f}s norm={stats['t_norm']:.3f}s "
+                f"cache={stats['t_cache']:.3f}s total={stats['t_total']:.3f}s "
+                f"inst={stats['t_inst']:,} tris={stats['tris']:,}")
+
+            self._show_perf_in_status(stats, vtk_time, display_name)
+
+            # Clean up
+            self.unsetCursor()
+            self.statusBar().clearMessage()
+            self.left_panel.export_btn.setEnabled(True)
+
+        except Exception as e:
+            self.unsetCursor()
+            logging.exception(f'[model] finish processing failed: {e}')
+
+    def _show_perf_in_status(self, stats: dict, vtk_time: float,
+                             display_name: str | None = None) -> None:
+        # Build a compact single-line status with thousands separators
+        name = f' ({display_name})' if display_name else ''
+        msg = (
+            f'Pipeline{name} | '
+            f'model={stats['t_model']:.3f}s  norm={stats['t_norm']:.3f}s  '
+            f'cache={stats['t_cache']:.3f}s  prep={stats.get('t_vtk_prep', 0.0):.3f}s  '
+            f'vtk={vtk_time:.3f}s  total={stats['t_total']:.3f}s  '
+            f'inst={stats.get('t_inst', 0):,}  tris={stats.get('tris', 0):,}'
+        )
+        try:
+            self.statusBar().showMessage(msg)
+        except Exception as e:
+            logging.exception(f'[ui] failed updating status bar: {e}')

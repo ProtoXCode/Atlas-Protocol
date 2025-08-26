@@ -5,6 +5,18 @@ It documents the ideas, breakthroughs, and phases of development from inception.
 
 ---
 
+### 📅 2025-08-26 – Threading
+I've tried as much as I can with my limited experience using PySide6 and VTK to 
+move the heavy calculation out of the GUI, but I've not directly managed to do so yet.
+But for now the GUI displays more info on what's going on, same does logging. 
+
+For now, I'll probably have a look at the other functions I need to add and 
+optimize the wrapper. Right now it doesn't care about performance or size and 
+will happily stuff B-Rep in huge quantities. 30000 solids in 20 seconds isn't 
+directly bad though.
+
+---
+
 ### 📅 2025-08-23 – Model dataclasses, optimization, refactor
  - Added dataclasses to the model, this will ensure data can flow through to the GUI in all sorts.
  - Fixed problem with edit fields not functioning until model switch or rescanned.
