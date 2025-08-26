@@ -2,27 +2,41 @@ from __future__ import annotations
 import time, traceback, sys
 import logging
 
-from PySide6.QtCore import QObject, Signal, Slot, QRunnable
+from PySide6.QtCore import QObject, Signal, QRunnable
 
 from atlas_runtime.asm_utils import normalize_assembly, \
     build_compound_and_triangles
 
 
 class WorkerSignals(QObject):
-    result = Signal(object, dict)
+    result = Signal(object, dict)  # (asm, stats)
     error = Signal(str)
     finished = Signal()
+    progress = Signal(object)
 
 
 class ModelRunnable(QRunnable):
-    def __init__(self, fn, kwargs: dict):
+    def __init__(self, fn, kwargs: dict) -> None:
         super().__init__()
         self.fn = fn
         self.kwargs = kwargs
         self.signals = WorkerSignals()
 
-    @Slot()
-    def run(self):
+    @staticmethod
+    def _count_solid_instances(inst) -> int:
+        """ Sum quantity of all nodes that actually have a shape in model. """
+        total = 0
+        stack = [(inst, 1)]
+        while stack:
+            node, parent_qty = stack.pop()
+            qty = parent_qty * int(getattr(node, 'qty', 1))
+            if getattr(getattr(node, 'ref', None), 'shape', None) is not None:
+                total += qty
+            for ch in getattr(node, 'children', []) or []:
+                stack.append((ch, qty))
+        return total
+
+    def run(self) -> None:
         try:
             t_all = time.perf_counter()
 
@@ -38,10 +52,17 @@ class ModelRunnable(QRunnable):
             build_compound_and_triangles(asm)
             t_cache = time.perf_counter() - t2
 
+            try:
+                t_inst = self._count_solid_instances(asm.root)
+            except Exception as e:
+                logging.exception(f'[perf] instance count failed: {e}')
+                t_inst = 0
+
             stats = {
                 't_model': t_model,
                 't_norm': t_norm,
                 't_cache': t_cache,
+                't_inst': t_inst,
                 't_total': time.perf_counter() - t_all,
                 'tris': len(asm.triangles or []),
             }
@@ -56,25 +77,27 @@ class ModelRunnable(QRunnable):
             self.signals.finished.emit()
 
 
-class ExportWorker(QRunnable):
-    finished = Signal(float, str)
+class ExportSignals(QObject):
+    finished = Signal(float, str)  # dt, out_path
     error = Signal(str)
+    progress = Signal()
 
+
+class ExportWorker(QRunnable):
     def __init__(self, atlas_occ, compound, path: str) -> None:
         super().__init__()
         self.atlas_occ = atlas_occ
         self.compound = compound
         self.path = path
+        self.signals = ExportSignals()
 
-    @Slot()
     def run(self) -> None:
-        import time
+        import time, traceback
         try:
             t0 = time.perf_counter()
             self.atlas_occ.export_step(self.compound, self.path)
             dt = time.perf_counter() - t0
-            self.finished.emit(dt, self.path)
+            self.signals.finished.emit(dt, self.path)
         except Exception as e:
-            import traceback
             traceback.print_exc()
-            self.error.emit(str(e))
+            self.signals.error.emit(str(e))

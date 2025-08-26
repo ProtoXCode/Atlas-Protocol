@@ -1,7 +1,6 @@
 import importlib
 import logging
 import json
-import time
 import sys
 from pathlib import Path
 
@@ -12,11 +11,8 @@ from PySide6.QtCore import Qt, QThreadPool, QTimer
 from gui.left_panel import LeftPanel
 from gui.right_panel import RightPanel
 from gui.bottom_panel import BottomPanel
-from gui.workers import ModelRunnable
+from gui.workers import ModelRunnable, ExportWorker
 from viewer.pyside_vtk_viewer import VTKQtViewer
-from atlas_runtime import atlas_occ
-from atlas_runtime.asm_utils import normalize_assembly, \
-    build_compound_and_triangles, bom_flat, bom_rollup
 
 PROGRAM_NAME = 'Atlas Protocol'
 PROGRAM_VERSION = '0.1'
@@ -70,8 +66,9 @@ class MainWindow(QMainWindow):
         self.setCentralWidget(central)
 
         self.pool = QThreadPool.globalInstance()
-        self.pool.setMaxThreadCount(1)
+        self.pool.setMaxThreadCount(4)
         self._job_running = False
+        self._pending_job = None
 
         grid = QGridLayout(central)
         grid.setSpacing(8)
@@ -109,7 +106,7 @@ class MainWindow(QMainWindow):
         self.current_assembly = None
         self._busy = False
 
-        self.left_panel.exportStepRequested.connect(self._export_step)
+        self.left_panel.exportStepRequested.connect(self._export_step_async)
         self.left_panel.regenerateRequested.connect(
             self._regenerate_current_model)
         self.left_panel.rescan_btn.clicked.connect(
@@ -132,64 +129,6 @@ class MainWindow(QMainWindow):
             for ch in getattr(node, 'children', []) or []:
                 stack.append((ch, qty))
         return total
-
-    def _run_model_pipeline(
-            self, fn, kwargs: dict, display_name: str | None = None):
-        t_all = time.perf_counter()
-
-        # === 1) Model call ===
-        t0 = time.perf_counter()
-        result = fn(**kwargs)
-        t_model = time.perf_counter() - t0
-
-        # === 2) Normalize ===
-        t1 = time.perf_counter()
-        asm = normalize_assembly(result)
-        t_norm = time.perf_counter() - t1
-
-        # === 3) Cache (compound + triangles) ===
-        t2 = time.perf_counter()
-        build_compound_and_triangles(asm)
-        t_cache = time.perf_counter() - t2
-
-        if not asm.triangles:
-            raise TypeError('Model produced no triangles.')
-
-        # === 4) Viewer upload ===
-        t3 = time.perf_counter()
-        self.vtk_panel.load_triangles(asm.triangles)
-        t_view = time.perf_counter() - t3
-
-        # ===5) Stash + UI ===
-        self.current_assembly = asm
-        if display_name:
-            self.current_model_name = display_name
-        self.left_panel.export_btn.setEnabled(True)
-
-        # === 6) BOM ===
-        if hasattr(self.right_panel, 'set_bom'):
-            try:
-                lines = bom_rollup(bom_flat(asm))
-                self.right_panel.set_bom(lines)
-            except Exception as e:
-                logging.exception(f'[bom] set_bom failed: {e}')
-
-        # === 7) Metrics ===
-        try:
-            n_inst = self._count_solid_instances(asm.root)
-        except Exception as e:
-            logging.exception(f'[perf] instance count failed: {e}')
-            n_inst = 0
-
-        t_total = time.perf_counter() - t_all
-        name_tag = f' ({display_name})' if display_name else ''
-        logging.info(
-            f'[perf] pipeline{name_tag} '
-            f'model={t_model:.3f}s norm={t_norm:.3f}s cache={t_cache:.3f}s '
-            f'view={t_view:.3f}s total={t_total:.3f}s '
-            f'inst={n_inst:,} tris={len(asm.triangles):,}')
-
-        return asm
 
     def _scan_and_update_models(self) -> None:
         self._models.clear()
@@ -280,21 +219,27 @@ class MainWindow(QMainWindow):
             # 3) first render using current UI values (defaults) via the pipeline
             fn = getattr(mod, func_name)
             kwargs = self._coerce_kwargs(self.left_panel.values())
-            self._run_model_pipeline(fn, kwargs, display_name)
+
+            self._start_model_job(fn, kwargs, display_name)
 
         except Exception as e:
             logging.exception(f'[models] Failed to load {display_name}: {e}')
 
     def _regenerate_current_model(self) -> None:
-        if self._busy:
+        if self._job_running:
             logging.info('[regen] Suppressed during busy operation')
             return
+
         if not self._current_mod or not self._current_fn_name:
             return
+
         try:
             fn = getattr(self._current_mod, self._current_fn_name)
             kwargs = self._coerce_kwargs(self.left_panel.values())
-            self._run_model_pipeline(fn, kwargs)
+
+            self._start_model_job(fn, kwargs)
+
+
         except Exception as e:
             logging.exception(
                 f'[models] Failed to regenerate current model: {e}')
@@ -329,8 +274,104 @@ class MainWindow(QMainWindow):
                     f'[models] Failed to coerce "{name}" ({v!r}) to {t}: {e}')
         return out
 
-    def _export_step(self) -> None:
-        """Export cached compound to STEP without recomputing geometry."""
+    def _start_model_job(
+            self, fn, kwargs: dict, display_name: str | None = None) -> None:
+
+        if self._job_running:
+            self._pending_job = (fn, kwargs, display_name)
+            logging.info('[model] queued pending job')
+            return
+
+        self._job_running = True
+        self.left_panel.export_btn.setEnabled(False)
+
+        self.setCursor(Qt.CursorShape.WaitCursor)
+
+        job = ModelRunnable(fn, kwargs)
+        self._last_job = job
+
+        def _on_result(asm, stats):
+            try:
+                self.unsetCursor()
+
+                # UI/VTK only on main thread
+                if not asm.triangles:
+                    raise TypeError('Model produced no triangles')
+
+                # Load triangles - this should be in the main thread-safe operation
+                self.vtk_panel.load_triangles(asm.triangles)
+
+                self.current_assembly = asm
+                if display_name:
+                    self.current_model_name = display_name
+
+                # Update BOM
+                if hasattr(self.right_panel, 'set_bom'):
+                    try:
+                        from atlas_runtime.asm_utils import bom_flat, \
+                            bom_rollup
+                        self.right_panel.set_bom(bom_rollup(bom_flat(asm)))
+                    except Exception as e:
+                        logging.exception(f'[model] set_bom failed: {e}')
+
+                # Log performance and stats
+                logging.info(
+                    f"[perf] pool pipeline{f' ({display_name})' if display_name else ''} "
+                    f"model={stats['t_model']:.3f}s norm={stats['t_norm']:.3f}s "
+                    f"cache={stats['t_cache']:.3f}s total={stats['t_total']:.3f}s "
+                    f"inst={stats['t_inst']:,} "
+                    f"tris={stats['tris']:,}")
+
+                self.left_panel.export_btn.setEnabled(True)
+
+            except Exception as e:
+                logging.exception(f'[model] result handler failed: {e}')
+
+        def _on_error(msg: str) -> None:
+            try:
+                self.unsetCursor()
+                logging.exception(f'[model] failed: {msg}')
+                QMessageBox.critical(self, 'Model failed', msg)
+                self.left_panel.export_btn.setEnabled(True)
+
+            except Exception as e:
+                logging.exception(f'[model] error handler failed: {e}')
+
+        def _on_finished() -> None:
+            try:
+                self.unsetCursor()
+                self._job_running = False
+                if self._pending_job:
+                    fn2, kw2, name2 = self._pending_job
+                    self._pending_job = None
+                    QTimer.singleShot(
+                        0, lambda: self._start_model_job(fn2, kw2, name2))
+
+            except Exception as e:
+                logging.exception(f'[model] finished handler failed: {e}')
+                self._job_running = False
+
+        def _on_progress(msg: str) -> None:
+            try:
+                self.statusBar().showMessage(msg)
+            except Exception as e:
+                logging.exception(f'[model] progress handler failed: {e}')
+
+        # Connect signals
+        job.signals.result.connect(
+            _on_result, Qt.ConnectionType.QueuedConnection)
+        job.signals.error.connect(
+            _on_error, Qt.ConnectionType.QueuedConnection)
+        job.signals.finished.connect(
+            _on_finished, Qt.ConnectionType.QueuedConnection)
+        job.signals.progress.connect(
+            _on_progress, Qt.ConnectionType.QueuedConnection)
+
+        # Start the job
+        self.pool.start(job)
+
+    def _export_step_async(self) -> None:
+        """Async version of STEP export using worker thread."""
         self.left_panel.cancel_pending_regen()
         if getattr(self, '_busy', False):
             logging.info('[export] blocked: busy flag set')
@@ -341,29 +382,23 @@ class MainWindow(QMainWindow):
             QMessageBox.information(self, 'Export', 'Nothing to export.')
             return
 
-        self._busy = True
+        # Get file path first (on main thread)
+        suggested = f"{getattr(self, 'current_model_name', 'atlas_model')}.step"
+        start = str(Path.home() / suggested)
+        path, _ = QFileDialog.getSaveFileName(
+            self, 'Export STEP', start, 'STEP (*.step *.stp)'
+        )
+        if not path:
+            return
+
+        p = Path(path)
+        if p.suffix.lower() not in ('.step', '.stp'):
+            p = p.with_suffix('.step')
+        path = str(p)
+
+        # Estimate size and warn if needed
         try:
-            # stop any pending debounce so nothing swaps assemblies mid-export
-            try:
-                if hasattr(self.left_panel, '_debounce'):
-                    # noinspection PyProtectedMember
-                    self.left_panel._debounce.stop()
-            except Exception as e:
-                logging.exception(f'[export] debounce stop failed: {e}')
-
-            logging.info(
-                f'[export] using cached assembly_py_id=0x{id(asm):x} '
-                f'compound_py_id=0x{id(asm.compound):x} dirty={asm.dirty}'
-            )
-
-            # estimate solids (cheap)
-            try:
-                n = self._count_solid_instances(asm.root)
-            except Exception as e:
-                logging.exception(f'[export] instance count failed: {e}')
-                n = 0
-
-            # big export guard
+            n = self._count_solid_instances(asm.root)
             est_bytes = n * 19_500
             est_gb = est_bytes / (1024 ** 3)
             HARD_CAP = 50_000
@@ -379,92 +414,61 @@ class MainWindow(QMainWindow):
                     logging.info(
                         f'[export] canceled at {n:,} solids (~{est_gb:.2f} GB)')
                     return
-                logging.info(
-                    f'[export] proceeding with {n:,} solids (~{est_gb:.2f} GB)')
-
-            # choose path (fixed quotes)
-            suggested = f"{getattr(self, 'current_model_name', 'atlas_model')}.step"
-            start = str(Path.home() / suggested)
-            path, _ = QFileDialog.getSaveFileName(
-                self, 'Export STEP', start, 'STEP (*.step *.stp)'
-            )
-            if not path:
-                return
-
-            p = Path(path)
-            if p.suffix.lower() not in ('.step', '.stp'):
-                p = p.with_suffix('.step')
-            path = str(p)
-
-            # export cached compound
-            self.left_panel.export_btn.setEnabled(False)
-            self.setCursor(Qt.CursorShape.BusyCursor)
-            t0 = time.perf_counter()
-
-            atlas_occ.export_step(asm.compound, path)
-
-            dt = time.perf_counter() - t0
-            QMessageBox.information(self, 'Export', f'Exported:\n{path}')
-            logging.info(f'[export] finished in {dt:.2f}s -> {path}')
 
         except Exception as e:
-            logging.exception(f'[export] failed: {e}')
-            QMessageBox.critical(self, 'Export failed', str(e))
-        finally:
+            logging.exception(f'[export] size estimation failed: {e}')
+
+        # Start async export
+        self._busy = True
+        self.left_panel.export_btn.setEnabled(False)
+        self.setCursor(Qt.CursorShape.WaitCursor)
+
+        # Import atlas_occ here to avoid any import issues
+        from atlas_runtime import atlas_occ
+
+        export_worker = ExportWorker(atlas_occ, asm.compound, path)
+
+        def _on_export_finished(dt: float, out_path: str) -> None:
             try:
                 self.unsetCursor()
+                QMessageBox.information(self, 'Export',
+                                        f'Exported:\n{out_path}')
+                logging.info(f'[export] finished in {dt:.2f}s -> {out_path}')
+
             except Exception as e:
-                logging.exception(f'[export] unsetCursor failed: {e}')
-            self.left_panel.export_btn.setEnabled(True)
-            self._busy = False
+                logging.exception(f'[export] finish handler failed: {e}')
 
-    def _start_model_job(self, fn, kwargs: dict,
-                         display_name: str | None = None) -> None:
-        if self._job_running:
-            logging.info('[model] skipped: job already running')
-            return
+            finally:
+                self.left_panel.export_btn.setEnabled(True)
+                self._busy = False
 
-        self._job_running = True
-        self.left_panel.export_btn.setEnabled(False)
+        def _on_export_error(msg: str) -> None:
+            try:
+                self.unsetCursor()
+                logging.exception(f'[export] failed: {msg}')
+                QMessageBox.critical(self, 'Export failed', msg)
 
-        job = ModelRunnable(fn, kwargs)
+            except Exception as e:
+                logging.exception(f'[export] error handler failed: {e}')
 
-        def _on_result(asm, stats):
-            # UI/VTK only on main thread
-            if not asm.triangles:
-                raise TypeError('Model produced no triangles')
-            # Queue a tick just to be extra safe with GL init
-            QTimer.singleShot(0, lambda: self.vtk_panel.load_triangles(asm.triangles))
+            finally:
+                self.left_panel.export_btn.setEnabled(True)
+                self._busy = False
 
-            self.current_assembly = asm
-            if display_name:
-                self.current_model_name = display_name
+        def _on_export_progress(msg: str) -> None:
+            try:
+                self.statusBar().showMessage(msg)
 
-            if hasattr(self, 'set_bom'):
-                try:
-                    from atlas_runtime.asm_utils import bom_flat, bom_rollup
-                    self.right_panel.set_bom(bom_rollup(bom_flat(asm)))
-                except Exception as e:
-                    logging.exception(f'[model] set_bom failed: {e}')
+            except Exception as e:
+                logging.exception(f'[export] progress handler failed: {e}')
 
-            logging.info(
-                f"[perf] pool pipeline{f' ({display_name})' if display_name else ''} "
-                f"model={stats['t_model']:.3f}s norm={stats['t_norm']:.3f}s "
-                f"cache={stats['t_cache']:.3f}s total={stats['t_total']:.3f}s "
-                f"tris={stats['tris']:,}")
+        # Connect signals
+        export_worker.signals.finished.connect(
+            _on_export_finished, Qt.ConnectionType.QueuedConnection)
+        export_worker.signals.error.connect(
+            _on_export_error, Qt.ConnectionType.QueuedConnection)
+        export_worker.signals.progress.connect(
+            _on_export_progress, Qt.ConnectionType.QueuedConnection)
 
-            self.left_panel.export_btn.setEnabled(True)
-
-        def _on_error(msg: str) -> None:
-            logging.exception(f'[model] failed: {msg}')
-            QMessageBox.critical(self, 'Model failed', msg)
-            self.left_panel.export_btn.setEnabled(True)
-
-        def _on_finished() -> None:
-            self._job_running = False
-
-        job.signals.result.connect(_on_result)
-        job.signals.error.connect(_on_error)
-        job.signals.finished.connect(_on_finished)
-
-        self.pool.start(job)
+        # Start export
+        self.pool.start(export_worker)
