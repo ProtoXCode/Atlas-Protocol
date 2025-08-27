@@ -22,6 +22,9 @@ def bool_cut(a: TopoDS_Shape, b: TopoDS_Shape) -> TopoDS_Shape:
     
                 Returns:
                     A TopoDS_Shape result of A - B
+    
+                Note:
+                    Releases the Python GIL during the boolean operation.
     """
 def bool_fuse(a: TopoDS_Shape, b: TopoDS_Shape) -> TopoDS_Shape:
     """
@@ -33,6 +36,9 @@ def bool_fuse(a: TopoDS_Shape, b: TopoDS_Shape) -> TopoDS_Shape:
     
                 Returns:
                     A TopoDS_Shape representing the fused shape
+    
+                Note:
+                    Releases the Python GIL during the boolean operation.
     """
 def export_step(shape: TopoDS_Shape, filename: str) -> None:
     """
@@ -44,6 +50,9 @@ def export_step(shape: TopoDS_Shape, filename: str) -> None:
     
                 Returns:
                     None
+    
+                Note:
+                    Releases the Python GIL during the export so other Python threads can run.
     """
 def extrude_shape(shape: TopoDS_Shape, dx: typing.SupportsFloat, dy: typing.SupportsFloat, dz: typing.SupportsFloat) -> TopoDS_Shape:
     """
@@ -55,6 +64,9 @@ def extrude_shape(shape: TopoDS_Shape, dx: typing.SupportsFloat, dy: typing.Supp
     
                 Returns:
                     A solid shape as extrusion result
+    
+                Note:
+                    Releases the Python GIL during the extrusion.
     """
 def get_triangles(shape: TopoDS_Shape) -> list[typing.Annotated[list[float], "FixedSize(9)"]]:
     """
@@ -62,6 +74,9 @@ def get_triangles(shape: TopoDS_Shape) -> list[typing.Annotated[list[float], "Fi
     
               Returns:
                   A list of triangles, each represented as a list of 9 floats (3 vertices x 3 coords).
+    
+              Note:
+                  Releases the Python GIL during meshing/triangulation.
     """
 def make_box(x: typing.SupportsFloat, y: typing.SupportsFloat, z: typing.SupportsFloat) -> TopoDS_Shape:
     """
@@ -77,13 +92,16 @@ def make_box(x: typing.SupportsFloat, y: typing.SupportsFloat, z: typing.Support
     """
 def make_compound(shapes: collections.abc.Sequence[TopoDS_Shape]) -> TopoDS_Shape:
     """
-                Combine multiple shapes into a single compound object. Raises on empty.
+                Combine multiple shapes into a single compound object.
     
                 Parameters:
                     shapes: List of TopoDS_Shapes
     
                 Returns:
                     Compound TopoDS_Shape
+    
+                Note:
+                    Releases the Python GIL while building the compound.
     """
 def make_cylinder(radius: typing.SupportsFloat, height: typing.SupportsFloat) -> TopoDS_Shape:
     """

@@ -5,6 +5,27 @@ It documents the ideas, breakthroughs, and phases of development from inception.
 
 ---
 
+### 📅 2025-08-27 – Wrapper GIL unlocked
+Wrapper releases GIL lock and will now allow other Python threads to run when 
+doing heavy tasks. The GUI no longer freezes.
+
+Re-ran the 50 x 50 x 50 grid pattern with these results:
+
+```
+ * Model               :    0.134s
+ * Normalization       :    0.000s
+ * Cache               :   77.754s
+ * Prep                :   10.589s
+ * VTK                 :    0.050s
+ * Total time          :   88.500s
+ * Number of instances :   125,000
+ * Number of triangles : 1,500,000
+``` 
+
+Updated screenshot on README.md
+
+---
+
 ### 📅 2025-08-26 – Threading
 I've tried as much as I can with my limited experience using PySide6 and VTK to 
 move the heavy calculation out of the GUI, but I've not directly managed to do so yet.

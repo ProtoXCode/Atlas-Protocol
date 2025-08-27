@@ -50,7 +50,7 @@ Atlas isn’t just a tool — it’s a protocol for **co-creating modular system
   PySide6 + VTK viewer now renders geometry **directly from Python modules** (no intermediate STL/STEP files needed).  
   Live rescan function allows hot-loading of model modules from the `/models` directory.
 
-![GUI](data/images/gui_23_08.png "Early GUI, 125'000 individual cubes")
+![GUI](data/images/gui_27_08.png "Early GUI, 125'000 individual cubes")
 
 ### 🔜 Next Steps
 - Expand OCC wrapper with advanced modeling operations (sheet metal bends, fastener library, etc.).
