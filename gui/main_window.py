@@ -458,7 +458,7 @@ class MainWindow(QMainWindow):
 
             finally:
                 self.left_panel.export_btn.setEnabled(True)
-                self._busy = False
+                self._finish_busy()
 
         def _on_export_error(msg: str) -> None:
             try:
@@ -686,3 +686,13 @@ class MainWindow(QMainWindow):
             self.statusBar().showMessage(msg)
         except Exception as e:
             logging.exception(f'[ui] failed updating status bar: {e}')
+
+    def _finish_busy(self) -> None:
+        try:
+            self.unsetCursor()
+        except Exception as e:
+            logging.exception(f'[ui] failed updating status bar: {e}')
+        self.left_panel.export_btn.setEnabled(True)
+        self._busy = False
+        if hasattr(self, 'statusBar'):
+            self.statusBar().clearMessage()

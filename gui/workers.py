@@ -112,7 +112,7 @@ class ModelRunnable(QRunnable):
         except Exception as e:
             error_msg = traceback.format_exc()
             logging.error(
-                f'[worker] Exception on thread {thread_id}: {error_msg}')
+                f'[worker] Exception on thread {thread_id}: {error_msg} - {e}')
             self.signals.error.emit(error_msg)
         finally:
             self.signals.finished.emit()
@@ -170,7 +170,7 @@ class ModelRunnable(QRunnable):
 class ExportSignals(QObject):
     finished = Signal(float, str)  # dt, out_path
     error = Signal(str)
-    progress = Signal()
+    progress = Signal(str)
 
 
 class ExportWorker(QRunnable):
@@ -202,4 +202,3 @@ class ExportWorker(QRunnable):
             logging.error(
                 f'[export] Exception on thread {thread_id}: {error_msg} ({e})')
             self.signals.error.emit(str(error_msg))
-
