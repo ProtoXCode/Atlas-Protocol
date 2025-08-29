@@ -4,7 +4,7 @@ Atlas OCC Wrapper — core OCC functionality exposed for intent-driven CAD.
 from __future__ import annotations
 import collections.abc
 import typing
-__all__ = ['TopoDS_Shape', 'bool_cut', 'bool_fuse', 'export_step', 'extrude_shape', 'get_triangles', 'make_box', 'make_compound', 'make_cylinder', 'make_face_from_wire', 'make_wire_circle', 'make_wire_face', 'show_shape_popup', 'xform_mirror', 'xform_rotate', 'xform_scale', 'xform_translate']
+__all__ = ['EXT_API_VERSION', 'TopoDS_Shape', 'bool_cut', 'bool_fuse', 'export_step', 'extrude_shape', 'get_triangles', 'make_box', 'make_compound', 'make_cylinder', 'make_face_from_wire', 'make_wire_circle', 'make_wire_face', 'make_wire_ij2d', 'xform_mirror', 'xform_rotate', 'xform_scale', 'xform_translate']
 class TopoDS_Shape:
     """
     
@@ -22,6 +22,9 @@ def bool_cut(a: TopoDS_Shape, b: TopoDS_Shape) -> TopoDS_Shape:
     
                 Returns:
                     A TopoDS_Shape result of A - B
+    
+                Note:
+                    Releases the Python GIL during the boolean operation.
     """
 def bool_fuse(a: TopoDS_Shape, b: TopoDS_Shape) -> TopoDS_Shape:
     """
@@ -33,6 +36,9 @@ def bool_fuse(a: TopoDS_Shape, b: TopoDS_Shape) -> TopoDS_Shape:
     
                 Returns:
                     A TopoDS_Shape representing the fused shape
+    
+                Note:
+                    Releases the Python GIL during the boolean operation.
     """
 def export_step(shape: TopoDS_Shape, filename: str) -> None:
     """
@@ -44,6 +50,9 @@ def export_step(shape: TopoDS_Shape, filename: str) -> None:
     
                 Returns:
                     None
+    
+                Note:
+                    Releases the Python GIL during the export so other Python threads can run.
     """
 def extrude_shape(shape: TopoDS_Shape, dx: typing.SupportsFloat, dy: typing.SupportsFloat, dz: typing.SupportsFloat) -> TopoDS_Shape:
     """
@@ -55,6 +64,9 @@ def extrude_shape(shape: TopoDS_Shape, dx: typing.SupportsFloat, dy: typing.Supp
     
                 Returns:
                     A solid shape as extrusion result
+    
+                Note:
+                    Releases the Python GIL during the extrusion.
     """
 def get_triangles(shape: TopoDS_Shape) -> list[typing.Annotated[list[float], "FixedSize(9)"]]:
     """
@@ -62,6 +74,9 @@ def get_triangles(shape: TopoDS_Shape) -> list[typing.Annotated[list[float], "Fi
     
               Returns:
                   A list of triangles, each represented as a list of 9 floats (3 vertices x 3 coords).
+    
+              Note:
+                  Releases the Python GIL during meshing/triangulation.
     """
 def make_box(x: typing.SupportsFloat, y: typing.SupportsFloat, z: typing.SupportsFloat) -> TopoDS_Shape:
     """
@@ -84,6 +99,9 @@ def make_compound(shapes: collections.abc.Sequence[TopoDS_Shape]) -> TopoDS_Shap
     
                 Returns:
                     Compound TopoDS_Shape
+    
+                Note:
+                    Releases the Python GIL while building the compound.
     """
 def make_cylinder(radius: typing.SupportsFloat, height: typing.SupportsFloat) -> TopoDS_Shape:
     """
@@ -130,15 +148,20 @@ def make_wire_face(points: collections.abc.Sequence[collections.abc.Sequence[typ
                 Returns:
                     A TopoDS_Shape representing a wire or a face
     """
-def show_shape_popup(shape: TopoDS_Shape) -> None:
+def make_wire_ij2d(segments: collections.abc.Sequence[dict], start: typing.Annotated[collections.abc.Sequence[typing.SupportsFloat], "FixedSize(2)"] = [0.0, 0.0], close: bool = False, plane: str = 'XY') -> TopoDS_Shape:
     """
-                Display a temporary popup window with the shape rendered in 3D.
+                Build a 2D wire on a principal plane using CNC-style segments.
     
-                Parameters:
-                    shape: Shape to visualize
+                segments: list of dicts with keys:
+                x, y              -> required end point on plane
+                i, j              -> optional center-offset from current point (arc if given)
+                cw: bool          -> True = clockwise, False = CCW (default)
     
-                Returns:
-                    None
+                start: [u0, v0] on chosen plane (e.g., XY -> [x0, y0])
+                close: add final edge back to start if True
+                plane: 'XY' (default), 'XZ', or 'YZ'
+    
+                Flat sketch: no third-axis motion.
     """
 def xform_mirror(shape: TopoDS_Shape, nx: typing.SupportsFloat, ny: typing.SupportsFloat, nz: typing.SupportsFloat) -> TopoDS_Shape:
     """
@@ -187,3 +210,4 @@ def xform_translate(shape: TopoDS_Shape, dx: typing.SupportsFloat, dy: typing.Su
                 Returns:
                     Translated shape
     """
+EXT_API_VERSION: str = '0.1.0'
