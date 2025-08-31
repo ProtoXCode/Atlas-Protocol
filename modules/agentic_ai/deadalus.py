@@ -1,3 +1,0 @@
-# Placeholder file for Daedalus Agent AI, tasks like analyzing files like
-# drawings, extracting dimensions and piping it through Atlas to regenerate
-# 3D models, drawings, BOMs' etc...

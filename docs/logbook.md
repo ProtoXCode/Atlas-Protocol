@@ -5,6 +5,52 @@ It documents the ideas, breakthroughs, and phases of development from inception.
 
 ---
 
+### 📅 2025-08-31 – Instancing
+ - Wrapper has been *upgraded*...:
+   - xform_translate -> xform_move (Now uses instancing)
+   - xform_copy creates full deep copy.
+ - Renamed and moved viewer file, cleans it up a bit.
+ - Switched from Typing hints to built-in hints for list/dict/tuples.
+ - Moved modules folder into atlas folder.
+ - Removed export warning message.
+ - Added tool for compiling OCC runtime files on Windows.
+ - Added more type hints for the functions.
+ - I made a YouTube video and a GIF (Quality as high as the budget)
+
+With the instancing the work load is significantly reduced.
+
+#### 50 x 50 x 50 grid pattern (Same as the previous test):
+```
+ * Model               :     0.130s
+ * Normalization       :     0.000s
+ * Cache               :     1.777s
+ * Prep                :    11.020s
+ * VTK                 :     0.060s
+ * Total time          :    12.951s
+ * Number of instances :    125,000
+ * Number of triangles :  1,500,000
+``` 
+
+#### 100 x 100 x 100 grid pattern **(1 MILLION CUBES)**
+```
+ * Model               :     1.204s
+ * Normalization       :     0.000s
+ * Cache               :    13.857s
+ * Prep                :    88.686s
+ * VTK                 :     0.391s
+ * Total time          :   103.980s
+ * Number of instances :  1,000,000
+ * Number of triangles : 12,000,000
+``` 
+
+The exported STEP file of the 1 million cube grid was 621Mb, might be able to 
+reduce it further with instance preserving export. *(According to AI)*
+
+#### [YouTube video: 1 million cubes](https://www.youtube.com/watch?v=uB3RwJ-4STQ)
+![1 million cubes](../data/images/1_mill.gif)
+
+---
+
 ### 📅 2025-08-27 – Wrapper GIL unlocked
 Wrapper releases GIL lock and will now allow other Python threads to run when 
 doing heavy tasks. The GUI no longer freezes.

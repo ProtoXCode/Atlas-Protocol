@@ -1,6 +1,6 @@
 from __future__ import annotations
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Tuple, Optional
+from typing import Any, Optional
 import os, sys, platform, importlib
 
 __all__ = ['atlas_occ',
@@ -45,7 +45,7 @@ class AtlasBom:
     qty: float
     unit: str = 'pcs'
     desc: str = ''
-    props: Dict[str, Any] = field(default_factory=dict)
+    props: dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass(frozen=True)
@@ -55,8 +55,8 @@ class AtlasPart:
     part_no: str
     desc: str = ''
     material: Optional[str] = None
-    drawings: List[str] = field(default_factory=list)
-    props: Dict[str, Any] = field(default_factory=dict)
+    drawings: list[str] = field(default_factory=list)
+    props: dict[str, Any] = field(default_factory=dict)
     bom_line: Optional[AtlasBom] = None
 
 
@@ -65,19 +65,19 @@ class AtlasInstance:
     ref: AtlasPart
     xform: Any
     qty: int = 1
-    children: List['AtlasInstance'] = field(default_factory=list)
+    children: list['AtlasInstance'] = field(default_factory=list)
     bom_role: str = 'normal'  # normal | phantom | purchased
-    overrides: Dict[str, Any] = field(default_factory=dict)
+    overrides: dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass(frozen=False)
 class AtlasAssembly:
     root: AtlasInstance
     # Caches for GUI/export
-    triangles: Optional[List[List[float]]] = None
-    viewer_instances: Optional[List[Tuple[str, Any, int]]] = None
+    triangles: Optional[list[list[float]]] = None
+    viewer_instances: Optional[list[tuple[str, Any, int]]] = None
     compound: Optional[TopoDS_Shape] = None
-    bom_total: Optional[List[AtlasBom]] = None
+    bom_total: Optional[list[AtlasBom]] = None
     dirty: bool = True
 
 

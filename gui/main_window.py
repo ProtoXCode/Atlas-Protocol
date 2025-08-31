@@ -9,13 +9,15 @@ from pathlib import Path
 from PySide6.QtWidgets import QMainWindow, QWidget, QGridLayout, QMessageBox, \
     QFileDialog, QApplication
 from PySide6.QtCore import Qt, QThreadPool, QTimer
+from vtkmodules.vtkCommonDataModel import vtkPolyData
 
-from atlas_runtime import build_compound_and_triangles
+from atlas_runtime import build_compound_and_triangles, AtlasAssembly, \
+    AtlasInstance
 from gui.left_panel import LeftPanel
 from gui.right_panel import RightPanel
 from gui.bottom_panel import BottomPanel
 from gui.workers import ModelRunnable, ExportWorker
-from viewer.pyside_vtk_viewer import VTKQtViewer
+from gui.vtk_viewer import VTKQtViewer
 
 PROGRAM_NAME = 'Atlas Protocol'
 PROGRAM_VERSION = '0.2'
@@ -120,7 +122,7 @@ class MainWindow(QMainWindow):
         QTimer.singleShot(0, self._scan_and_update_models)
 
     @staticmethod
-    def _count_solid_instances(inst) -> int:
+    def _count_solid_instances(inst: AtlasInstance) -> int:
         """ Sum quantity of all nodes that actually have a shape in model. """
         total = 0
         stack = [(inst, 1)]
@@ -250,7 +252,7 @@ class MainWindow(QMainWindow):
     def _coerce_kwargs(self, kwargs: dict) -> dict:
         out = dict(kwargs)
 
-        def _tname(tn):
+        def _tname(tn) -> str:
             if tn in (float, int, bool, str):
                 return {
                     float: 'float', int: 'int', bool: 'bool', str: 'str'}[tn]
@@ -293,7 +295,7 @@ class MainWindow(QMainWindow):
         job = ModelRunnable(fn, kwargs)
         self._last_job = job
 
-        def _on_result(processed_data, stats):
+        def _on_result(processed_data, stats: dict) -> None:
             try:
                 self.unsetCursor()
 
@@ -375,7 +377,7 @@ class MainWindow(QMainWindow):
         # Start the job
         self.pool.start(job)
 
-    def _update_bom(self, asm):
+    def _update_bom(self, asm: AtlasAssembly) -> None:
         """
         Update BOM in a separate method to avoid blocking main result handler
         """
@@ -414,28 +416,6 @@ class MainWindow(QMainWindow):
             p = p.with_suffix('.step')
         path = str(p)
 
-        # Estimate size and warn if needed
-        try:
-            n = self._count_solid_instances(asm.root)
-            est_bytes = n * 19_500
-            est_gb = est_bytes / (1024 ** 3)
-            HARD_CAP = 50_000
-            if n >= HARD_CAP:
-                reply = QMessageBox.question(
-                    self,
-                    'Huge export',
-                    f'This will export ~{n:,} solids.\n'
-                    f'Estimated STEP size ~{est_gb:.2f} GB.\n\nProceed?',
-                    QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
-                )
-                if reply != QMessageBox.StandardButton.Yes:
-                    logging.info(
-                        f'[export] canceled at {n:,} solids (~{est_gb:.2f} GB)')
-                    return
-
-        except Exception as e:
-            logging.exception(f'[export] size estimation failed: {e}')
-
         # Start async export
         self._busy = True
         self.left_panel.export_btn.setEnabled(False)
@@ -448,10 +428,24 @@ class MainWindow(QMainWindow):
 
         def _on_export_finished(dt: float, out_path: str) -> None:
             try:
+                try:
+                    size_bytes = os.path.getsize(out_path)
+                    size_mb = size_bytes / (1024 ** 2)
+                    size_str = f'{size_mb:.2f} MB' if size_mb >= 1 else \
+                        f'{size_bytes / 1024:.2f} KB'
+
+                except Exception as e:
+                    size_str = 'unknown size'
+                    logging.warning(
+                        f'[export] could not determine file size: {e}')
+
                 self.unsetCursor()
-                QMessageBox.information(self, 'Export',
-                                        f'Exported:\n{out_path}')
-                logging.info(f'[export] finished in {dt:.2f}s -> {out_path}')
+                QMessageBox.information(
+                    self, 'Export',
+                    f'Exported:\n\n{out_path}\n\nFile size: {size_str}')
+
+                logging.info(f'[export] finished in {dt:.2f}s -> '
+                             f'{out_path} ({size_str})')
 
             except Exception as e:
                 logging.exception(f'[export] finish handler failed: {e}')
@@ -471,7 +465,7 @@ class MainWindow(QMainWindow):
 
             finally:
                 self.left_panel.export_btn.setEnabled(True)
-                self._busy = False
+                self._finish_busy()
 
         def _on_export_progress(msg: str) -> None:
             try:
@@ -491,7 +485,8 @@ class MainWindow(QMainWindow):
         # Start export
         self.pool.start(export_worker)
 
-    def _process_assembly_chunked(self, asm, stats, display_name=None):
+    def _process_assembly_chunked(
+            self, asm: AtlasAssembly, stats: dict, display_name=None) -> None:
         """ Process assembly in chunks with GUI updates between """
 
         # Show progress
@@ -501,7 +496,8 @@ class MainWindow(QMainWindow):
         # Step 1: Build triangles with periodic GUI updates
         self._chunk_build_triangles(asm, stats, display_name)
 
-    def _chunk_build_triangles(self, asm, stats, display_name):
+    def _chunk_build_triangles(
+            self, asm: AtlasAssembly, stats: dict, display_name: str) -> None:
         """ Build triangles with chunked processing """
         self._current_asm = asm
         self._current_stats = stats
@@ -535,11 +531,11 @@ class MainWindow(QMainWindow):
             raise e
 
     @staticmethod
-    def _process_events_during_triangles():
+    def _process_events_during_triangles() -> None:
         """ Process GUI events during triangle building """
         QApplication.processEvents()
 
-    def _chunk_vtk_processing(self):
+    def _chunk_vtk_processing(self) -> None:
         """ Process VTK loading in chunks """
         asm = self._current_asm
         stats = self._current_stats
@@ -563,7 +559,8 @@ class MainWindow(QMainWindow):
         else:
             self._process_vtk_simple(asm, stats, display_name)
 
-    def _chunk_vtk_large(self, asm, stats, display_name):
+    def _chunk_vtk_large(
+            self, asm: AtlasAssembly, stats: dict, display_name: str) -> None:
         """ Handle large triangle counts with chunked VTK processing """
         self.statusBar().showMessage(
             f'Loading {len(asm.triangles):,} triangles...')
@@ -573,10 +570,11 @@ class MainWindow(QMainWindow):
         self._vtk_start_time = time.perf_counter()
 
         # Start VTK processing on next event loop iteration
-        QTimer.singleShot(10, lambda: self._do_vtk_with_progress(asm, stats,
-                                                                 display_name))
+        QTimer.singleShot(10, lambda: self._do_vtk_with_progress(
+            asm, stats, display_name))
 
-    def _do_vtk_with_progress(self, asm, stats, display_name):
+    def _do_vtk_with_progress(
+            self, asm: AtlasAssembly, stats: dict, display_name: str) -> None:
         """ Do VTK processing with periodic progress updates """
         try:
             # Process events before starting
@@ -596,7 +594,7 @@ class MainWindow(QMainWindow):
         except Exception as e:
             logging.exception(f'[model] VTK processing failed: {e}')
 
-    def _load_triangles_optimized(self, triangles):
+    def _load_triangles_optimized(self, triangles: list[list[float]]) -> None:
         """Optimized triangle loading with progress updates"""
         triangle_count = len(triangles)
 
@@ -610,7 +608,7 @@ class MainWindow(QMainWindow):
         # Update status periodically during VTK operations
         original_render_mesh = self.vtk_panel.render_mesh
 
-        def render_mesh_with_progress(tris):
+        def render_mesh_with_progress(tris: list[list[float]]) -> vtkPolyData:
             # Process events every so often during mesh building
             for i in range(0, len(tris), 10000):
                 if i > 0:
@@ -628,7 +626,8 @@ class MainWindow(QMainWindow):
             # Restore original method
             self.vtk_panel.render_mesh = original_render_mesh
 
-    def _process_vtk_simple(self, asm, stats, display_name):
+    def _process_vtk_simple(
+            self, asm: AtlasAssembly, stats: dict, display_name: str) -> None:
         """Simple VTK processing for small models"""
         vtk_start = time.perf_counter()
         self.vtk_panel.load_triangles(asm.triangles)
@@ -637,8 +636,9 @@ class MainWindow(QMainWindow):
 
         self._finish_model_processing(asm, stats, display_name, vtk_time)
 
-    def _finish_model_processing(self, asm, stats, display_name,
-                                 vtk_time: float = 0.0) -> None:
+    def _finish_model_processing(
+            self, asm: AtlasAssembly, stats: dict, display_name: str,
+            vtk_time: float = 0.0) -> None:
         """ Finish model processing and update UI """
         try:
             self.current_assembly = asm

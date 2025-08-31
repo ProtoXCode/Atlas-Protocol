@@ -4,7 +4,7 @@ Atlas OCC Wrapper — core OCC functionality exposed for intent-driven CAD.
 from __future__ import annotations
 import collections.abc
 import typing
-__all__ = ['EXT_API_VERSION', 'TopoDS_Shape', 'bool_cut', 'bool_fuse', 'export_step', 'extrude_shape', 'get_triangles', 'make_box', 'make_compound', 'make_cylinder', 'make_face_from_wire', 'make_wire_circle', 'make_wire_face', 'make_wire_ij2d', 'xform_mirror', 'xform_rotate', 'xform_scale', 'xform_translate']
+__all__ = ['EXT_API_VERSION', 'TopoDS_Shape', 'bool_cut', 'bool_fuse', 'export_step', 'extrude_shape', 'get_triangles', 'make_box', 'make_compound', 'make_cylinder', 'make_face_from_wire', 'make_wire_circle', 'make_wire_face', 'make_wire_ij2d', 'xform_copy', 'xform_mirror', 'xform_move', 'xform_rotate', 'xform_scale']
 class TopoDS_Shape:
     """
     
@@ -163,6 +163,20 @@ def make_wire_ij2d(segments: collections.abc.Sequence[dict], start: typing.Annot
     
                 Flat sketch: no third-axis motion.
     """
+def xform_copy(shape: TopoDS_Shape, dx: typing.SupportsFloat, dy: typing.SupportsFloat, dz: typing.SupportsFloat) -> TopoDS_Shape:
+    """
+                Copy (duplicate) a shape by (dx, dy, dz) by baking the transform.
+                This creates a NEW TShape (independent geometry). Heavier than xform_move.
+    
+                Parameters:
+                    shape: Shape to move
+                    dx: Offset along X
+                    dy: Offset along Y
+                    dz: Offset along Z
+    
+                Returns:
+                    Translated as new shape
+    """
 def xform_mirror(shape: TopoDS_Shape, nx: typing.SupportsFloat, ny: typing.SupportsFloat, nz: typing.SupportsFloat) -> TopoDS_Shape:
     """
             Mirror shape across a plane with normal vector (nx, ny, nz).
@@ -173,6 +187,19 @@ def xform_mirror(shape: TopoDS_Shape, nx: typing.SupportsFloat, ny: typing.Suppo
     
             Returns:
                 Mirrored shape
+    """
+def xform_move(shape: TopoDS_Shape, dx: typing.SupportsFloat, dy: typing.SupportsFloat, dz: typing.SupportsFloat) -> TopoDS_Shape:
+    """
+                Translate a shape along X, Y, Z axes.
+    
+                Parameters:
+                    shape: Shape to move
+                    dx: Offset along X
+                    dy: Offset along Y
+                    dz: Offset along Z
+    
+                Returns:
+                    Translated shape
     """
 def xform_rotate(shape: TopoDS_Shape, angle_deg: typing.SupportsFloat, ax: typing.SupportsFloat, ay: typing.SupportsFloat, az: typing.SupportsFloat) -> TopoDS_Shape:
     """
@@ -197,17 +224,4 @@ def xform_scale(shape: TopoDS_Shape, sx: typing.SupportsFloat, sy: typing.Suppor
                 Returns:
                     Scaled shape
     """
-def xform_translate(shape: TopoDS_Shape, dx: typing.SupportsFloat, dy: typing.SupportsFloat, dz: typing.SupportsFloat) -> TopoDS_Shape:
-    """
-                Translate a shape along X, Y, Z axes.
-    
-                Parameters:
-                    shape: Shape to move
-                    dx: Offset along X
-                    dy: Offset along Y
-                    dz: Offset along Z
-    
-                Returns:
-                    Translated shape
-    """
-EXT_API_VERSION: str = '0.1.0'
+EXT_API_VERSION: str = '0.2.0'

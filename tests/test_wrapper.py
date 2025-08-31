@@ -19,9 +19,16 @@ def test_import_wrapper(occ) -> None:
     for name in ('bool_cut', 'bool_fuse', 'export_step', 'extrude_shape',
                  'get_triangles', 'make_box', 'make_compound', 'make_cylinder',
                  'make_face_from_wire', 'make_wire_circle', 'make_wire_face',
-                 'xform_mirror', 'xform_rotate', 'xform_scale',
-                 'xform_translate'):
+                 'xform_mirror', 'xform_rotate', 'xform_scale', 'xform_move',
+                 'xform_copy', 'make_wire_ij2d', 'EXT_API_VERSION'):
         assert hasattr(occ, name), f'missing {name}'
+
+
+def test_api_version(occ) -> None:
+    assert hasattr(occ, 'EXT_API_VERSION'), \
+        'Missing EXT_API_VERSION in wrapper'
+    assert occ.EXT_API_VERSION == '0.2.0', \
+        f'Unexpected version: {occ.EXT_API_VERSION}'
 
 
 def test_make_box_and_triangles(occ) -> None:
@@ -34,7 +41,7 @@ def test_make_box_and_triangles(occ) -> None:
 def test_bool_ops_roundtrip(occ) -> None:
     a = occ.make_box(10, 10, 10)
     b = occ.make_box(6, 6, 6)
-    b = occ.xform_translate(b, 2, 2, 2)
+    b = occ.xform_move(b, 2, 2, 2)
     cut = occ.bool_cut(a, b)
     fuse = occ.bool_fuse(a, b)
     assert len(occ.get_triangles(cut)) > 0
@@ -43,7 +50,8 @@ def test_bool_ops_roundtrip(occ) -> None:
 
 def test_transforms(occ) -> None:
     s = occ.make_box(1, 2, 3)
-    s = occ.xform_translate(s, 5, 0, 0)
+    s = occ.xform_move(s, 5, 0, 0)
+    s = occ.xform_copy(s, 10, 0, 0)
     s = occ.xform_rotate(s, 45, 0, 0, 1)
     s = occ.xform_scale(s, 2, 2, 2)
     s = occ.xform_mirror(s, 1, 0, 0)
@@ -64,7 +72,7 @@ def test_step_export_nonempty(occ) -> None:
 def test_make_compound_and_export(occ) -> None:
     a = occ.make_box(5, 5, 5)
     b = occ.make_cylinder(2, 10)
-    b = occ.xform_translate(b, 3, 0, 0)
+    b = occ.xform_move(b, 3, 0, 0)
     c = occ.make_compound([a, b])
     assert len(occ.get_triangles(c)) > 0
 
@@ -89,13 +97,6 @@ def test_compound_identity(occ) -> None:
 def test_translate_does_not_mutate_input(occ) -> None:
     a = occ.make_box(1, 2, 3)
     tris_a = occ.get_triangles(a)
-    b = occ.xform_translate(a, 10, 0, 0)  # copy=true
+    b = occ.xform_move(a, 10, 0, 0)
     tris_b = occ.get_triangles(b)
     assert len(tris_a) > 0 and len(tris_b) > 0
-
-
-def test_api_version(occ) -> None:
-    assert hasattr(occ, 'EXT_API_VERSION'), \
-        'Missing EXT_API_VERSION in wrapper'
-    assert occ.EXT_API_VERSION == '0.1.0', \
-        f'Unexpected version: {occ.EXT_API_VERSION}'

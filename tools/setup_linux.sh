@@ -1,7 +1,7 @@
 #!/bin/bash
 
 echo "==============================="
-echo " Atlas OCC Runtime Setup 🧱"
+echo " Atlas OCC Runtime Setup 🧱    "
 echo "==============================="
 
 # Exit immediately if a command exits with a non-zero status.

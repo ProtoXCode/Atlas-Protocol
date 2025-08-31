@@ -21,6 +21,12 @@ Atlas isn’t just a tool — it’s a protocol for **co-creating modular system
 
 ---
 
+## [YouTube video: 1 million cubes](https://www.youtube.com/watch?v=uB3RwJ-4STQ)
+
+![1 million cubes](data/images/1_mill.gif "1 Million cubes")
+
+---
+
 ## ⚙️ Getting Started
 
 ### Windows:
