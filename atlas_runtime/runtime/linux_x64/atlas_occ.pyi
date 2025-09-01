@@ -54,13 +54,15 @@ def export_step(shape: TopoDS_Shape, filename: str) -> None:
                 Note:
                     Releases the Python GIL during the export so other Python threads can run.
     """
-def extrude_shape(shape: TopoDS_Shape, dx: typing.SupportsFloat, dy: typing.SupportsFloat, dz: typing.SupportsFloat) -> TopoDS_Shape:
+def extrude_shape(shape: TopoDS_Shape, dx: typing.SupportsFloat = 0.0, dy: typing.SupportsFloat = 0.0, dz: typing.SupportsFloat = 0.0) -> TopoDS_Shape:
     """
                 Extrude a shape in the direction of (dx, dy, dz).
     
                 Parameters:
                     shape: A 2D face shape
-                    dx, dy, dz: Extrusion vector
+                    dx: Delta x extrusion vector
+                    dy: Delta y extrusion vector
+                    dz: Delta z extrusion vector
     
                 Returns:
                     A solid shape as extrusion result
@@ -163,7 +165,7 @@ def make_wire_ij2d(segments: collections.abc.Sequence[dict], start: typing.Annot
     
                 Flat sketch: no third-axis motion.
     """
-def xform_copy(shape: TopoDS_Shape, dx: typing.SupportsFloat, dy: typing.SupportsFloat, dz: typing.SupportsFloat) -> TopoDS_Shape:
+def xform_copy(shape: TopoDS_Shape, dx: typing.SupportsFloat = 0.0, dy: typing.SupportsFloat = 0.0, dz: typing.SupportsFloat = 0.0) -> TopoDS_Shape:
     """
                 Copy (duplicate) a shape by (dx, dy, dz) by baking the transform.
                 This creates a NEW TShape (independent geometry). Heavier than xform_move.
@@ -177,18 +179,20 @@ def xform_copy(shape: TopoDS_Shape, dx: typing.SupportsFloat, dy: typing.Support
                 Returns:
                     Translated as new shape
     """
-def xform_mirror(shape: TopoDS_Shape, nx: typing.SupportsFloat, ny: typing.SupportsFloat, nz: typing.SupportsFloat) -> TopoDS_Shape:
+def xform_mirror(shape: TopoDS_Shape, nx: typing.SupportsFloat = 0.0, ny: typing.SupportsFloat = 0.0, nz: typing.SupportsFloat = 0.0) -> TopoDS_Shape:
     """
             Mirror shape across a plane with normal vector (nx, ny, nz).
     
             Parameters:
                 shape: Shape to mirror
-                nx, ny, nz: Normal vector defining the mirror plane
+                nx: Normal vector defining the mirror plane z
+                ny: Normal vector defining the mirror plane y
+                nz: Normal vector defining the mirror plane z
     
             Returns:
                 Mirrored shape
     """
-def xform_move(shape: TopoDS_Shape, dx: typing.SupportsFloat, dy: typing.SupportsFloat, dz: typing.SupportsFloat) -> TopoDS_Shape:
+def xform_move(shape: TopoDS_Shape, dx: typing.SupportsFloat = 0.0, dy: typing.SupportsFloat = 0.0, dz: typing.SupportsFloat = 0.0) -> TopoDS_Shape:
     """
                 Translate a shape along X, Y, Z axes.
     
@@ -201,25 +205,29 @@ def xform_move(shape: TopoDS_Shape, dx: typing.SupportsFloat, dy: typing.Support
                 Returns:
                     Translated shape
     """
-def xform_rotate(shape: TopoDS_Shape, angle_deg: typing.SupportsFloat, ax: typing.SupportsFloat, ay: typing.SupportsFloat, az: typing.SupportsFloat) -> TopoDS_Shape:
+def xform_rotate(shape: TopoDS_Shape, angle_deg: typing.SupportsFloat, ax: typing.SupportsFloat = 0.0, ay: typing.SupportsFloat = 0.0, az: typing.SupportsFloat = 0.0) -> TopoDS_Shape:
     """
             Rotate shape around axis defined by vector (ax, ay, az).
     
             Parameters:
                 shape: Shape to rotate
                 angle_deg: Rotation angle in degrees
-                ax, ay, az: Axis of rotation (normalized is ideal)
+                ax: Axis of rotation (Around x axis)
+                ay: Axis of rotation (Around y axis)
+                az: Axis of rotation (Around z axis)
     
             Returns:
                 Rotated shape
     """
-def xform_scale(shape: TopoDS_Shape, sx: typing.SupportsFloat, sy: typing.SupportsFloat, sz: typing.SupportsFloat) -> TopoDS_Shape:
+def xform_scale(shape: TopoDS_Shape, sx: typing.SupportsFloat = 0.0, sy: typing.SupportsFloat = 0.0, sz: typing.SupportsFloat = 0.0) -> TopoDS_Shape:
     """
                 Scale shape uniformly. (Currently supports only uniform scaling: sx == sy == sz)
     
                 Parameters:
                     shape: Shape to scale
-                    sx, sy, sz: Scale factors
+                    sx: Scale factor along x axis
+                    sy: Scale factor along y axis
+                    sz: Scale factor along z axis
     
                 Returns:
                     Scaled shape

@@ -182,3 +182,5 @@ linux_x64/
 vcpkg/
 logs/
 models/transformer/
+models/test*
+
