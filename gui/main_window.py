@@ -3,8 +3,10 @@ import logging
 import json
 import sys
 import os
+import gc
 import time
 from pathlib import Path
+from types import ModuleType
 
 from PySide6.QtWidgets import QMainWindow, QWidget, QGridLayout, QMessageBox, \
     QFileDialog, QApplication
@@ -179,11 +181,31 @@ class MainWindow(QMainWindow):
         self.left_panel.model_combo.blockSignals(False)
 
         if self._models:
-            first = self.left_panel.model_combo.itemText(0)
-            self.left_panel.model_combo.blockSignals(True)
-            self.left_panel.model_combo.setCurrentIndex(0)
-            self.left_panel.model_combo.blockSignals(False)
-            self._load_selected_model(first)
+            current_text = self.left_panel.model_combo.currentText()
+            if current_text in self._models:
+                self._load_selected_model(current_text)
+            else:
+                first = self.left_panel.model_combo.itemText(0)
+                self.left_panel.model_combo.setCurrentIndex(0)
+                self._load_selected_model(first)
+
+    @staticmethod
+    def _unload_package(pkg_name: str) -> None:
+        """ Remove a package and all its submodules from sys.modules. """
+        killed = []
+        prefix = pkg_name + '.'
+        for name in list(sys.modules.keys()):
+            if name == pkg_name or name.startswith(prefix):
+                killed.append(name)
+                del sys.modules[name]
+        logging.debug(f'[reload] dropped modules: {killed}')
+
+    def _force_import_package(self, pkg_name: str) -> ModuleType:
+        """ Invalidate caches, unload package tree, then import clean. """
+        importlib.invalidate_caches()
+        self._unload_package(pkg_name)
+        gc.collect()
+        return importlib.import_module(pkg_name)
 
     def _load_selected_model(self, arg: str | int) -> None:
         """
@@ -203,10 +225,7 @@ class MainWindow(QMainWindow):
         func_name = info['func']
 
         try:
-            if mod_name in list(sys.modules.keys()):
-                mod = importlib.reload(importlib.import_module(mod_name))
-            else:
-                mod = importlib.import_module(mod_name)
+            mod = self._force_import_package(mod_name)
 
             if not hasattr(mod, func_name):
                 raise AttributeError(
@@ -226,6 +245,9 @@ class MainWindow(QMainWindow):
             kwargs = self._coerce_kwargs(self.left_panel.values())
 
             self._start_model_job(fn, kwargs, display_name)
+            logging.info(
+                f"[reload] {mod_name} id={id(mod)} file={getattr(
+                    mod, '__file__', None)}")
 
         except Exception as e:
             logging.exception(f'[models] Failed to load {display_name}: {e}')
@@ -403,7 +425,7 @@ class MainWindow(QMainWindow):
             return
 
         # Get file path first (on main thread)
-        suggested = f'{getattr(self, 'current_model_name', 'atlas_model')}.step'
+        suggested = f"{getattr(self, 'current_model_name', 'atlas_model')}.step"
         start = str(Path.home() / suggested)
         path, _ = QFileDialog.getSaveFileName(
             self, 'Export STEP', start, 'STEP (*.step *.stp)'
