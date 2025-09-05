@@ -10,6 +10,12 @@ from vtkmodules.qt.QVTKRenderWindowInteractor import QVTKRenderWindowInteractor
 from vtkmodules.util.numpy_support import numpy_to_vtk, numpy_to_vtkIdTypeArray
 import vtk
 
+from atlas.config_loader import load_config
+
+# Config
+config = load_config('atlas/config.json')
+model_color = tuple(config['model_color'])
+
 
 class VTKQtViewer(QWidget):
     def __init__(self, parent=None) -> None:
@@ -104,6 +110,7 @@ class VTKQtViewer(QWidget):
             vtk_points.SetData(
                 numpy_to_vtk(points_np, deep=False))  # geometry floats
 
+            # noinspection PyArgumentList
             vtk_cells = vtk.vtkCellArray()
 
             vtk_offsets = numpy_to_vtkIdTypeArray(offsets_np, deep=True)
@@ -119,7 +126,7 @@ class VTKQtViewer(QWidget):
 
             actor = vtk.vtkActor()
             actor.SetMapper(mapper)
-            actor.GetProperty().SetColor(0.2, 0.7, 0.8)
+            actor.GetProperty().SetColor(model_color)
 
             self.renderer.RemoveAllViewProps()
             self.renderer.AddActor(actor)
@@ -163,7 +170,7 @@ class VTKQtViewer(QWidget):
 
         actor = vtk.vtkActor()
         actor.SetMapper(mapper)
-        actor.GetProperty().SetColor(0.2, 0.7, 0.8)
+        actor.GetProperty().SetColor(model_color)
 
         self.renderer.RemoveAllViewProps()
         self.renderer.AddActor(actor)
@@ -213,6 +220,7 @@ class VTKQtViewer(QWidget):
         vtk_points = vtk.vtkPoints()
         vtk_points.SetData(numpy_to_vtk(points_np))
 
+        # noinspection PyArgumentList
         vtk_cells = vtk.vtkCellArray()
         for f in faces_np:
             id_list = vtk.vtkIdList()
@@ -253,6 +261,7 @@ class VTKQtViewer(QWidget):
         vtk_points = vtk.vtkPoints()
         vtk_points.SetData(numpy_to_vtk(points_np))
 
+        # noinspection PyArgumentList
         vtk_cells = vtk.vtkCellArray()
         for f in faces_np:
             id_list = vtk.vtkIdList()

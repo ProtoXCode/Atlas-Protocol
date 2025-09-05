@@ -5,6 +5,25 @@ It documents the ideas, breakthroughs, and phases of development from inception.
 
 ---
 
+### 📅 2025-09-05 – 
+ - Added config file and config loader.
+ - Changed model color to "cad-like" light gray.
+ - Moved color, GUI size etc. over to config file.
+ - Minor updates to code.
+
+What I'm working on right now:
+ - Model building semantics.
+ - Exploring MCP integration options.
+ - Trying to make the wrapper *behave* on Linux:
+   - Wrapper ignores local files, uses system files. VCPKG builds 7.9 OCC files, wrapper looks for 7.8, but kinda still works. But will give segmentation fault when exporting to step.
+   - If I force it to use same folder runtime files, wrapper actually do want 7.9... But now it will crash on import.
+    
+ **Conclusion:**
+ When it's *wrong* it mostly works, but when it's supposed to be right it's totally wrong.
+ There are some ABI mismatching going on. AI thinks X11 could be the culprit.
+
+---
+
 ### 📅 2025-08-31 – Instancing
  - Wrapper has been *upgraded*...:
    - xform_translate -> xform_move (Now uses instancing)
@@ -239,7 +258,7 @@ Next: More shapes, more power, and full Atlas integration.
 
 ### 📅 2025-06-05 – GUI Refactor
 - Switched to Pyside6 since VTK didn't support Tkinter.
-  - Loaded and rendered a STL file.
+  - Loaded and rendered an STL file.
 - Reversed this log. New entry on top.
 
 ---

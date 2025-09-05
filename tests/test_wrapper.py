@@ -12,6 +12,8 @@ def occ():
         from atlas_runtime import atlas_occ
     except Exception as e:
         pytest.skip(f'atlas_occ not available: {e}')
+
+    # noinspection PyUnboundLocalVariable
     return atlas_occ
 
 

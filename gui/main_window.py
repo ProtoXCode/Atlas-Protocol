@@ -20,16 +20,20 @@ from gui.right_panel import RightPanel
 from gui.bottom_panel import BottomPanel
 from gui.workers import ModelRunnable, ExportWorker
 from gui.vtk_viewer import VTKQtViewer
+from atlas.config_loader import load_config
 
 PROGRAM_NAME = 'Atlas Protocol'
 PROGRAM_VERSION = '0.2'
 
-WINDOW_WIDTH = 1500
-WINDOW_HEIGHT = 750
-PANEL_CONTROL_WIDTH = 300
-PANEL_BOM_WIDTH = 300
-PANEL_DRAWING_HEIGHT = 200
-PANEL_TOP_HEIGHT = 100
+# Config
+config = load_config('atlas/config.json')
+
+window_width = config['window_width']
+window_height = config['window_height']
+panel_control_width = config['panel_control_width']
+panel_bom_width = config['panel_bom_width']
+panel_drawing_height = config['panel_drawing_height']
+panel_top_height = config['panel_top_height']
 
 APP_ROOT = Path(__file__).resolve().parents[1]
 MODELS_DIR = APP_ROOT / 'models'
@@ -68,7 +72,7 @@ class MainWindow(QMainWindow):
         super().__init__()
 
         self.setWindowTitle(f'{PROGRAM_NAME} v{PROGRAM_VERSION}')
-        self.resize(WINDOW_WIDTH, WINDOW_HEIGHT)
+        self.resize(window_width, window_height)
         central = QWidget()
         self.setCentralWidget(central)
 
@@ -82,7 +86,7 @@ class MainWindow(QMainWindow):
 
         # --- Panels ---
         self.left_panel = LeftPanel()
-        self.left_panel.setFixedWidth(PANEL_CONTROL_WIDTH)
+        self.left_panel.setFixedWidth(panel_control_width)
         self.left_panel.export_btn.setEnabled(False)
 
         self.vtk_panel = VTKQtViewer()
@@ -90,12 +94,12 @@ class MainWindow(QMainWindow):
         self.vtk_panel.setMinimumWidth(600)
 
         self.right_panel = RightPanel()
-        self.right_panel.setFixedWidth(PANEL_BOM_WIDTH)
-        self.right_panel.setMinimumWidth(PANEL_BOM_WIDTH)
+        self.right_panel.setFixedWidth(panel_bom_width)
+        self.right_panel.setMinimumWidth(panel_bom_width)
 
         self.bottom_panel = BottomPanel()
-        self.bottom_panel.setFixedHeight(PANEL_DRAWING_HEIGHT)
-        self.bottom_panel.setMinimumHeight(PANEL_DRAWING_HEIGHT)
+        self.bottom_panel.setFixedHeight(panel_drawing_height)
+        self.bottom_panel.setMinimumHeight(panel_drawing_height)
 
         grid.addWidget(self.left_panel, 0, 0, 1, 1)
         grid.addWidget(self.vtk_panel, 0, 1, 1, 1)

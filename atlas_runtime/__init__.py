@@ -1,5 +1,6 @@
 from __future__ import annotations
 from dataclasses import dataclass, field
+from types import ModuleType
 from typing import Any, Optional
 import os, sys, platform, importlib
 
@@ -34,7 +35,7 @@ else:
     os.environ['LD_LIBRARY_PATH'] = (
             _dlldir + os.pathsep + os.environ.get('LD_LIBRARY_PATH', ''))
 
-atlas_occ = importlib.import_module('atlas_occ')
+atlas_occ: ModuleType = importlib.import_module('atlas_occ')
 
 TopoDS_Shape = Any
 

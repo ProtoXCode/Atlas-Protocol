@@ -1,0 +1,9 @@
+{
+  "window_width": 1500,
+  "window_height": 750,
+  "panel_control_width": 300,
+  "panel_bom_width": 300,
+  "panel_drawing_height": 200,
+  "panel_top_height": 100,
+  "model_color": [0.8, 0.8, 0.8]
+}
