@@ -64,7 +64,7 @@ class AtlasPart:
 @dataclass(frozen=False)
 class AtlasInstance:
     ref: AtlasPart
-    xform: Any
+    xform: Any = (0.0, 0.0, 0.0)
     qty: int = 1
     children: list['AtlasInstance'] = field(default_factory=list)
     bom_role: str = 'normal'  # normal | phantom | purchased
