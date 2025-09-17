@@ -5,7 +5,37 @@ It documents the ideas, breakthroughs, and phases of development from inception.
 
 ---
 
-### 📅 2025-09-05 – 
+### 📅 2025-09-17 – Wrapper functions (Windows only right now)
+ - Wrapper functions:
+   - STL export:
+     - Exports TopoDS_Shape to STL.
+     - Default to binary STL for compact size.
+     - Adjustable deflection for mesh accuracy.
+     - Returns True/False depending on success.
+   - Volume calculation:
+     - Returns the shape's volume as a float.
+   - New primitives:
+     - Sphere.
+     - Cone.
+     - Torus.
+ - Test coverage for the new functions.
+
+I've been kinda overworked lately, 9 hours days in the factory combined with 
+getting the fuse box and mains upgraded, heatpump soon to be installed and
+doing some home renovations due to this. And I kinda need a new kitchen too...
+
+No new progress on the Linux wrapper, but it's on my mind. I think it's most
+likely a CMake issue. I'm working on a branch to troubleshoot it, but it's slow
+progress, especially for a newbie as me.
+
+Still not through C++ Crash Course book, but I've entered **Filesystems**
+chapter now. So it's *some* progress at least.
+
+>*Anyone know a good book on **CMake**?*
+
+---
+
+### 📅 2025-09-05 – Config loader, minor tweaks
  - Added config file and config loader.
  - Changed model color to "cad-like" light gray.
  - Moved color, GUI size etc. over to config file.

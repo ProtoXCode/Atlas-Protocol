@@ -1,9 +1,12 @@
 import pytest
 import tempfile
 import os
+import math
 
 atlas_runtime = pytest.importorskip('atlas_runtime',
                                     reason='Atlas runtime is not importable')
+
+WRAPPER_API_VERSION = '0.2.1'  # Update as new versions are released
 
 
 @pytest.fixture(scope='session')
@@ -18,18 +21,20 @@ def occ():
 
 
 def test_import_wrapper(occ) -> None:
-    for name in ('bool_cut', 'bool_fuse', 'export_step', 'extrude_shape',
-                 'get_triangles', 'make_box', 'make_compound', 'make_cylinder',
-                 'make_face_from_wire', 'make_wire_circle', 'make_wire_face',
-                 'xform_mirror', 'xform_rotate', 'xform_scale', 'xform_move',
-                 'xform_copy', 'make_wire_ij2d', 'EXT_API_VERSION'):
+    for name in ('EXT_API_VERSION', 'TopoDS_Shape', 'bool_cut', 'bool_fuse',
+                 'export_step', 'export_stl', 'extrude_shape', 'get_triangles',
+                 'make_box', 'make_compound', 'make_cone', 'make_cylinder',
+                 'make_face_from_wire', 'make_sphere', 'make_torus',
+                 'make_wire_circle', 'make_wire_face', 'make_wire_ij2d',
+                 'shape_volume', 'xform_copy', 'xform_mirror', 'xform_move',
+                 'xform_rotate', 'xform_scale'):
         assert hasattr(occ, name), f'missing {name}'
 
 
 def test_api_version(occ) -> None:
     assert hasattr(occ, 'EXT_API_VERSION'), \
         'Missing EXT_API_VERSION in wrapper'
-    assert occ.EXT_API_VERSION == '0.2.0', \
+    assert occ.EXT_API_VERSION == WRAPPER_API_VERSION, \
         f'Unexpected version: {occ.EXT_API_VERSION}'
 
 
@@ -71,6 +76,20 @@ def test_step_export_nonempty(occ) -> None:
         assert b'ISO-10303-21' in head
 
 
+def test_stl_export_nonempty(occ) -> None:
+    s = occ.make_sphere(10)
+    with tempfile.TemporaryDirectory() as tmpdir:
+        path = os.path.join(tmpdir, 'sphere.stl')
+        ok = occ.export_stl(s, path)
+        assert ok is True
+        assert os.path.exists(path)
+        with open(path, 'rb') as f:
+            data = f.read(100)
+        assert len(data) >= 84
+        tri_count = int.from_bytes(data[80:84], byteorder='little')
+        assert tri_count > 0
+
+
 def test_make_compound_and_export(occ) -> None:
     a = occ.make_box(5, 5, 5)
     b = occ.make_cylinder(2, 10)
@@ -102,3 +121,23 @@ def test_translate_does_not_mutate_input(occ) -> None:
     b = occ.xform_move(a, 10, 0, 0)
     tris_b = occ.get_triangles(b)
     assert len(tris_a) > 0 and len(tris_b) > 0
+
+
+def test_volume_box(occ) -> None:
+    s = occ.make_box(10, 20, 30)
+    v = occ.shape_volume(s)
+    assert abs(v - 6000) < 1e-6  # Volume = 10 * 20 * 30 = 6000
+
+
+def test_volume_cylinder(occ) -> None:
+    s = occ.make_cylinder(5, 10)
+    v = occ.shape_volume(s)
+    expected = math.pi * 25 * 10  # Volume = π * r^2 * h
+    assert abs(v - expected) / expected < 1e-6
+
+
+def test_make_torus(occ) -> None:
+    s = occ.make_torus(5, 10)
+    assert s is not None
+    tris = occ.get_triangles(s)
+    assert isinstance(tris, list) and len(tris) > 0

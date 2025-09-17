@@ -4,7 +4,7 @@ Atlas OCC Wrapper — core OCC functionality exposed for intent-driven CAD.
 from __future__ import annotations
 import collections.abc
 import typing
-__all__ = ['EXT_API_VERSION', 'TopoDS_Shape', 'bool_cut', 'bool_fuse', 'export_step', 'extrude_shape', 'get_triangles', 'make_box', 'make_compound', 'make_cylinder', 'make_face_from_wire', 'make_wire_circle', 'make_wire_face', 'make_wire_ij2d', 'xform_copy', 'xform_mirror', 'xform_move', 'xform_rotate', 'xform_scale']
+__all__ = ['EXT_API_VERSION', 'TopoDS_Shape', 'bool_cut', 'bool_fuse', 'export_step', 'export_stl', 'extrude_shape', 'get_triangles', 'make_box', 'make_compound', 'make_cone', 'make_cylinder', 'make_face_from_wire', 'make_sphere', 'make_torus', 'make_wire_circle', 'make_wire_face', 'make_wire_ij2d', 'shape_volume', 'xform_copy', 'xform_mirror', 'xform_move', 'xform_rotate', 'xform_scale']
 class TopoDS_Shape:
     """
     
@@ -50,6 +50,23 @@ def export_step(shape: TopoDS_Shape, filename: str) -> None:
     
                 Returns:
                     None
+    
+                Note:
+                    Releases the Python GIL during the export so other Python threads can run.
+    """
+def export_stl(shape: TopoDS_Shape, filename: str, deflection: typing.SupportsFloat = 0.1) -> bool:
+    """
+                Export shape to an STL file.
+    
+                Parameters:
+                    shape: Shape to export
+                    filename: Target .stl file path
+                    deflection: Mesh accuracy (default 0.1 mm).
+                                Lower = finer mesh, bigger file.
+                                Higher = coarser mesh, smaller file.
+    
+                Returns:
+                    True if export succeeded, False otherwise.
     
                 Note:
                     Releases the Python GIL during the export so other Python threads can run.
@@ -105,6 +122,18 @@ def make_compound(shapes: collections.abc.Sequence[TopoDS_Shape]) -> TopoDS_Shap
                 Note:
                     Releases the Python GIL while building the compound.
     """
+def make_cone(r1: typing.SupportsFloat, r2: typing.SupportsFloat, height: typing.SupportsFloat) -> TopoDS_Shape:
+    """
+                Creates a cone
+    
+                Parameters:
+                    r1: Bottom radius
+                    r2: Top Radius
+                    height: Cone height
+    
+                Returns:
+                    TopoDS_Shape representing the cone
+    """
 def make_cylinder(radius: typing.SupportsFloat, height: typing.SupportsFloat) -> TopoDS_Shape:
     """
                 Create a vertical cylinder along the Z axis.
@@ -125,6 +154,27 @@ def make_face_from_wire(wire: TopoDS_Shape) -> TopoDS_Shape:
     
                 Returns:
                     A TopoDS_Shape representing the face
+    """
+def make_sphere(radius: typing.SupportsFloat) -> TopoDS_Shape:
+    """
+                Creates a sphere.
+    
+                Parameters:
+                    radius: Sphere radius
+    
+                Returns:
+                    A TopoDS_Shape representing the spehere
+    """
+def make_torus(r1: typing.SupportsFloat, r2: typing.SupportsFloat) -> TopoDS_Shape:
+    """
+                Creates a torus
+    
+                Parameters:
+                    r1: Major radius
+                    r2: Minor radius
+    
+                Returns:
+                    TopoDS_Shape representing the torus
     """
 def make_wire_circle(radius: typing.SupportsFloat, center: collections.abc.Sequence[typing.SupportsFloat], face: bool = False) -> TopoDS_Shape:
     """
@@ -164,6 +214,19 @@ def make_wire_ij2d(segments: collections.abc.Sequence[dict], start: typing.Annot
                 plane: 'XY' (default), 'XZ', or 'YZ'
     
                 Flat sketch: no third-axis motion.
+    """
+def shape_volume(shape: TopoDS_Shape) -> float:
+    """
+            Compute the volume of a shape.
+    
+            Parameters:
+                shape: Shape to analyze
+    
+            Returns:
+                Volume of the shape (double)
+    
+            Note:
+                Releases the Python GIL during calculation.
     """
 def xform_copy(shape: TopoDS_Shape, dx: typing.SupportsFloat = 0.0, dy: typing.SupportsFloat = 0.0, dz: typing.SupportsFloat = 0.0) -> TopoDS_Shape:
     """
@@ -232,4 +295,4 @@ def xform_scale(shape: TopoDS_Shape, sx: typing.SupportsFloat = 0.0, sy: typing.
                 Returns:
                     Scaled shape
     """
-EXT_API_VERSION: str = '0.2.0'
+EXT_API_VERSION: str = '0.2.1'
