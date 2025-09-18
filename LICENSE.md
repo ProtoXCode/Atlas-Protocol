@@ -1,0 +1,116 @@
+Atlas Liberation License (ALL) v1.2
+===================================
+
+Copyright (c) 2025–present Tom Erik Harnes
+
+Permission is hereby granted, free of charge, to any person or organization
+obtaining a copy of this software and associated documentation files (the
+“Software”),
+to use, reproduce, and modify copies of the Software for **non-commercial**
+purposes,
+including but not limited to education, research, experimentation, prototyping,
+and community innovation, subject to the following conditions:
+
+---
+
+### 1. Attribution:
+
+All copies or substantial portions of the Software must retain this license,  
+author attribution, and any notices of original origin.
+
+---
+
+### 2. Commercial Use:
+
+Commercial use, integration, or deployment of the Software or its derivatives,
+whether direct or indirect, requires a commercial license agreement with the
+author or rightful maintainers.
+
+This includes, but is not limited to:
+
+- Use of the Software in internal product development pipelines within
+  commercial entities
+- Generation of design assets, CAD files, digital twins, manufacturing
+  drawings,
+  BOMs, or other derivative outputs used in commercial workflows
+- Integration into ERP, MES, or PDM systems for configuration, resolution,
+  or validation purposes
+- Embedding or utilizing the Software in SaaS platforms, APIs, or internal
+  tools that provide commercial value
+- Use in the development or manufacturing of products intended for sale, trade,
+  or professional deployment
+- Any use that contributes to the creation, enhancement, or delivery of
+  commercial value constitutes commercial use under this license.
+
+Commercial usage is permitted only under a registered license agreement, which
+may include flat-rate or usage-based terms depending on the scope of
+integration.
+
+For licensing terms, contact:
+Tom Erik Harnes  
+teharnes@gmail.com
+
+---
+
+### 3. Openness & Derivatives:
+
+All modifications and enhancements must remain open-source if distributed.  
+Forks, logic modules, and system extensions must retain this license or a
+compatible open license.
+
+---
+
+### 4. Prohibited Uses:
+
+The Software may **not** be used, directly or indirectly, in:
+
+- Systems of oppression or authoritarian surveillance
+- Intentional weaponization targeting civilian populations
+- Projects that promote discrimination, exploitation, or restriction of
+  freedoms
+
+**Note**: Use in general military R&D or dual-use systems is *not automatically
+excluded*, but must adhere to ethical guidelines and cannot violate the above
+clause.
+
+---
+
+### 5. No Warranty:
+
+The Software is provided “as is”, without warranty of any kind, express or
+implied,  
+including but not limited to the warranties of merchantability, fitness for a
+particular  
+purpose and noninfringement. In no event shall the authors be liable for any
+claim, damages  
+or other liability arising from the use of the Software.
+
+---
+
+This license empowers individuals and communities to innovate freely,  
+while protecting the ethical use and collaborative nature of the Atlas
+Protocol.
+
+For commercial licensing or inquiries, contact:  
+**Tom Erik Harnes**  
+[teharnes@gmail.com](mailto:teharnes@gmail.com)
+
+---
+
+## Third-Party Notices
+
+This project uses **Open CASCADE Technology (OCCT)** for CAD kernel
+functionality.
+
+OCCT is licensed under the **GNU Lesser General Public License (LGPL) v2.1**,  
+with an additional **exception** allowing object code to include header
+material.
+
+- See: `third_party/OCC-LICENSE-LGPL-2.1.txt`
+- See: `third_party/OCC-LICENSE-EXCEPTION.txt`
+
+You must comply with the terms of the LGPL v2.1 and the OCCT Exception when
+using Atlas Protocol together with OCCT components.
+
+Atlas Protocol itself is licensed under the Atlas Liberation License (ALL).  
+OCC remains licensed under its own terms.

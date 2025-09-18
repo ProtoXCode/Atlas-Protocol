@@ -99,7 +99,16 @@ Atlas is released under the **Atlas Liberation License (ALL)**:
 - 🚫 Prohibited for oppression, mass surveillance, or civilian-targeted weaponization
 - 🔁 Redistribution must preserve open terms and author credit
 
-→ Full license: [LICENSE.txt](./LICENSE.txt)
+→ Full license: [LICENSE.txt](LICENSE.md)
+
+### ⚠️ Third-Party Notice
+
+Atlas Protocol uses **Open CASCADE Technology (OCCT)** for CAD kernel functionality.  
+OCCT is licensed under the **LGPL v2.1** with an additional exception.  
+
+- Full license texts are included in [`third_party/`](third_party/)  
+- Atlas remains licensed under the Atlas Liberation License (ALL)  
+- OCCT continues to be licensed under its own terms
 
 ---
 
