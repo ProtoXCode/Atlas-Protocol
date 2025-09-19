@@ -65,18 +65,18 @@ class LeftPanel(QWidget):
                 w.setRange(p.get("min", -1e9), p.get("max", 1e9))
                 w.setSingleStep(p.get("step", 1.0))
                 w.setValue(float(default or 0.0))
-                w.valueChanged.connect(self._debounce.start)
+                w.editingFinished.connect(self.regenerateRequested.emit)
             elif t == "int":
                 w = QSpinBox()
                 w.setRange(int(p.get("min", -10 ** 9)),
                            int(p.get("max", 10 ** 9)))
                 w.setSingleStep(int(p.get("step", 1)))
                 w.setValue(int(default or 0))
-                w.valueChanged.connect(self._debounce.start)
+                w.editingFinished.connect(self.regenerateRequested.emit)
             elif t == "bool":
                 w = QCheckBox()
                 w.setChecked(bool(default))
-                w.stateChanged.connect(self._debounce.start)
+                w.stateChanged.connect(self.regenerateRequested.emit)
             elif t == "enum":
                 from PySide6.QtWidgets import QComboBox
                 w = QComboBox()
@@ -84,11 +84,12 @@ class LeftPanel(QWidget):
                     w.addItem(str(c))
                 if default is not None:
                     w.setCurrentText(str(default))
-                w.currentTextChanged.connect(lambda *_: self._debounce.start())
+                w.currentTextChanged.connect(
+                    lambda *_: self.regenerateRequested.emit())
             else:
                 w = QLineEdit()
                 w.setText("" if default is None else str(default))
-                w.textChanged.connect(self._debounce.start)
+                w.editingFinished.connect(self.regenerateRequested.emit)
 
             self._editors[name] = w
             self._form.addRow(label, w)
